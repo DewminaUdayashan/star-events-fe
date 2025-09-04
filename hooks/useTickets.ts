@@ -167,8 +167,105 @@ export function useTicketQRCode() {
   const [ticketCode, setTicketCode] = useState<string | null>(null)
   const [paymentStatus, setPaymentStatus] = useState<string>('pending')
 
+  // Helper function to safely create blob URL
+  const createBlobUrl = useCallback((data: any): string => {
+    try {
+      console.log('Creating blob URL from data:', {
+        type: typeof data,
+        isBlob: data instanceof Blob,
+        isArrayBuffer: data instanceof ArrayBuffer,
+        isUint8Array: data instanceof Uint8Array,
+        constructor: data?.constructor?.name,
+        size: data instanceof Blob ? data.size : (data instanceof ArrayBuffer ? data.byteLength : 'unknown'),
+        keys: typeof data === 'object' && data !== null ? Object.keys(data) : 'not object'
+      })
+      
+      // Check if data is already a Blob
+      if (data instanceof Blob) {
+        console.log('Data is already a Blob with size:', data.size, 'and type:', data.type)
+        if (data.size === 0) {
+          throw new Error('Received empty blob')
+        }
+        return URL.createObjectURL(data)
+      }
+      
+      // If data is ArrayBuffer or Uint8Array, create blob
+      if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+        const size = data instanceof ArrayBuffer ? data.byteLength : data.length
+        console.log('Data is ArrayBuffer/Uint8Array with size:', size)
+        if (size === 0) {
+          throw new Error('Received empty ArrayBuffer/Uint8Array')
+        }
+        const blob = new Blob([data], { type: 'image/png' })
+        return URL.createObjectURL(blob)
+      }
+      
+      // If data is base64 string, convert to blob
+      if (typeof data === 'string') {
+        console.log('Data is string with length:', data.length)
+        if (data.length === 0) {
+          throw new Error('Received empty string')
+        }
+        
+        // Remove data URL prefix if present
+        const base64Data = data.replace(/^data:image\/[a-z]+;base64,/, '')
+        if (base64Data.length === 0) {
+          throw new Error('Empty base64 data after prefix removal')
+        }
+        
+        try {
+          const binaryString = atob(base64Data)
+          if (binaryString.length === 0) {
+            throw new Error('Empty binary string after base64 decode')
+          }
+          
+          const bytes = new Uint8Array(binaryString.length)
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          const blob = new Blob([bytes], { type: 'image/png' })
+          console.log('Created blob from base64 with size:', blob.size)
+          return URL.createObjectURL(blob)
+        } catch (base64Error) {
+          console.warn('Failed to decode base64:', base64Error)
+          throw new Error('Invalid base64 data: ' + (base64Error instanceof Error ? base64Error.message : 'Unknown error'))
+        }
+      }
+      
+      // If data has arrayBuffer method (like Response), it needs to be awaited first
+      if (data && typeof data.arrayBuffer === 'function') {
+        console.log('Data has arrayBuffer method - this should be awaited before calling createBlobUrl')
+        throw new Error('Data with arrayBuffer method must be converted to ArrayBuffer first using await data.arrayBuffer()')
+      }
+      
+      // Check if data is a JSON object that might contain blob data
+      if (data && typeof data === 'object' && data !== null) {
+        console.log('Data is object, checking for blob-related properties:', Object.keys(data))
+        
+        // Check for common blob-related properties
+        if (data.data || data.blob || data.buffer || data.content) {
+          const blobData = data.data || data.blob || data.buffer || data.content
+          console.log('Found nested blob data, recursing with:', typeof blobData)
+          return createBlobUrl(blobData)
+        }
+      }
+      
+      console.error('Unsupported data format:', {
+        type: typeof data,
+        constructor: data?.constructor?.name,
+        isNull: data === null,
+        isUndefined: data === undefined,
+        sample: typeof data === 'string' ? data.substring(0, 100) : data
+      })
+      throw new Error(`Unsupported data format for blob creation: ${typeof data} (${data?.constructor?.name || 'unknown'})`)
+    } catch (err) {
+      console.error('Failed to create blob URL:', err)
+      throw new Error('Failed to process QR code image data: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    }
+  }, [])
+
   // Poll payment status until ticket is paid, with fallback to mark as paid
-  const pollPaymentStatus = useCallback(async (ticketId: string, maxAttempts = 15): Promise<boolean> => {
+  const pollPaymentStatus = useCallback(async (ticketId: string, maxAttempts = 1): Promise<boolean> => {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const status = await ticketsService.getPaymentStatus(ticketId)
@@ -178,25 +275,15 @@ export function useTicketQRCode() {
           return true
         }
         
-        // Wait 3 seconds before next poll (reduced from 2s to 3s)
-        await new Promise(resolve => setTimeout(resolve, 3000))
+        // Wait 2 seconds before next poll
+        if (attempt < maxAttempts - 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        }
       } catch (err) {
         console.warn(`Payment status poll attempt ${attempt + 1} failed:`, err)
-        if (attempt === maxAttempts - 1) {
-          // Try to mark as paid before giving up
-          try {
-            console.log('Payment polling failed, attempting to mark ticket as paid...')
-            const markResult = await ticketsService.markPaid(ticketId)
-            if (markResult.success && markResult.isPaid) {
-              setPaymentStatus('Completed')
-              return true
-            }
-          } catch (markError) {
-            console.warn('Failed to mark ticket as paid:', markError)
-          }
-          throw err
+        if (attempt < maxAttempts - 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000))
         }
-        await new Promise(resolve => setTimeout(resolve, 3000))
       }
     }
     
@@ -245,11 +332,13 @@ export function useTicketQRCode() {
       let genResult;
       try {
         genResult = await ticketsService.generateTicketQr(ticketId)
+        console.log('QR generation result:', genResult)
       } catch (qrError) {
         console.warn('QR generation failed, trying force QR generation:', qrError)
         // Try force QR generation as fallback
         try {
           const forceResult = await ticketsService.forceQrGeneration(ticketId)
+          console.log('Force QR generation result:', forceResult)
           if (forceResult.success) {
             genResult = { success: true, ticketCode: forceResult.ticketCode, qrCodePath: forceResult.qrCodePath }
           } else {
@@ -257,7 +346,6 @@ export function useTicketQRCode() {
           }
         } catch (forceError) {
           console.warn('Force QR generation failed:', forceError)
-          // Even if QR generation fails, payment status is already true
           throw new Error("QR generation failed, but your payment is confirmed. Please contact support for your ticket.")
         }
       }
@@ -267,13 +355,13 @@ export function useTicketQRCode() {
 
       if (code) {
         try {
-          const blob = await ticketsService.getQrImageByTicketCode(code)
-          const url = URL.createObjectURL(blob)
+          const imageData = await ticketsService.getQrImageByTicketCode(code)
+          console.log('QR image data received:', typeof imageData, imageData instanceof Blob)
+          const url = createBlobUrl(imageData)
           setQrCodeUrl(url)
           return url
         } catch (imageError) {
           console.warn('QR image fetch failed:', imageError)
-          // Payment is confirmed, but QR image couldn't be fetched
           throw new Error("Payment confirmed, but QR code image unavailable. Please contact support.")
         }
       }
@@ -286,15 +374,19 @@ export function useTicketQRCode() {
     } finally {
       setLoading(false)
     }
-  }, [pollPaymentStatus])
+  }, [pollPaymentStatus, createBlobUrl])
 
   const clearQRCode = useCallback(() => {
     if (qrCodeUrl) {
-      URL.revokeObjectURL(qrCodeUrl)
+      try {
+        URL.revokeObjectURL(qrCodeUrl)
+      } catch (err) {
+        console.warn('Failed to revoke object URL:', err)
+      }
     }
     setQrCodeUrl(null)
     setError(null)
-    setTicketCode(null) // Clear ticketCode as well
+    setTicketCode(null)
   }, [qrCodeUrl])
 
   // Direct QR download using the specific endpoint (for manual download button)
@@ -303,28 +395,40 @@ export function useTicketQRCode() {
       setLoading(true)
       setError(null)
 
-      // Try the specific endpoint first as mentioned in requirements
+      console.log('Attempting to download QR code for ticket:', ticketId)
+
+      // Strategy 1: Try the specific QR endpoint first
       try {
-        console.log('Attempting to get QR code for ticket:', ticketId)
+        console.log('Trying specific QR endpoint...')
         const qrResult = await ticketsService.getTicketQRCode(ticketId)
         console.log('QR code result:', qrResult)
         
-        if (qrResult.Success && qrResult.TicketCode) {
-          console.log('Getting QR image for ticket code:', qrResult.TicketCode)
-          const blob = await ticketsService.getQrImageByTicketCode(qrResult.TicketCode)
-          const url = URL.createObjectURL(blob)
-          setQrCodeUrl(url)
-          setTicketCode(qrResult.TicketCode)
-          console.log('QR code URL created successfully')
-          return url
+        // Handle different possible response formats
+        const success = qrResult.success || qrResult.Success
+        const ticketCodeFromResult = qrResult.ticketCode || qrResult.TicketCode
+        
+        if (success && ticketCodeFromResult) {
+          console.log('Getting QR image for ticket code:', ticketCodeFromResult)
+          try {
+            const imageData = await ticketsService.getQrImageByTicketCode(ticketCodeFromResult)
+            console.log('QR image data received:', typeof imageData, imageData instanceof Blob)
+            const url = createBlobUrl(imageData)
+            setQrCodeUrl(url)
+            setTicketCode(ticketCodeFromResult)
+            console.log('QR code URL created successfully')
+            return url
+          } catch (imageError) {
+            console.warn('Failed to fetch QR image by ticket code:', imageError)
+          }
         } else {
-          console.warn('QR result missing Success or TicketCode:', qrResult)
+          console.warn('QR result missing success flag or ticket code:', qrResult)
         }
       } catch (specificError) {
-        console.error('Specific QR endpoint failed:', specificError)
+        console.warn('Specific QR endpoint failed:', specificError)
       }
 
-      // First try to get ticket details
+      // Strategy 2: Get ticket details and try direct download
+      console.log('Trying to get ticket details...')
       const ticketDetails = await ticketsService.getTicket(ticketId);
       if (!ticketDetails) {
         throw new Error("Ticket details not found.");
@@ -332,23 +436,28 @@ export function useTicketQRCode() {
 
       // If ticket has a ticketCode, try to download QR directly
       if (ticketDetails.ticketCode) {
+        console.log('Found ticket code in details:', ticketDetails.ticketCode)
         try {
-          const blob = await ticketsService.getQrImageByTicketCode(ticketDetails.ticketCode)
-          const url = URL.createObjectURL(blob)
+          const imageData = await ticketsService.getQrImageByTicketCode(ticketDetails.ticketCode)
+          console.log('Direct QR image data received:', typeof imageData, imageData instanceof Blob)
+          const url = createBlobUrl(imageData)
           setQrCodeUrl(url)
           setTicketCode(ticketDetails.ticketCode)
           return url
         } catch (imageError) {
-          console.warn('Direct QR download failed, trying generation:', imageError)
+          console.warn('Direct QR download failed:', imageError)
         }
       }
 
-      // If direct download fails, try force QR generation
+      // Strategy 3: Try force QR generation
+      console.log('Trying force QR generation...')
       try {
         const forceResult = await ticketsService.forceQrGeneration(ticketId)
+        console.log('Force QR result:', forceResult)
         if (forceResult.success && forceResult.ticketCode) {
-          const blob = await ticketsService.getQrImageByTicketCode(forceResult.ticketCode)
-          const url = URL.createObjectURL(blob)
+          const imageData = await ticketsService.getQrImageByTicketCode(forceResult.ticketCode)
+          console.log('Force generated QR image data received:', typeof imageData, imageData instanceof Blob)
+          const url = createBlobUrl(imageData)
           setQrCodeUrl(url)
           setTicketCode(forceResult.ticketCode)
           return url
@@ -357,16 +466,48 @@ export function useTicketQRCode() {
         console.warn('Force QR generation failed:', forceError)
       }
 
-      // If all else fails, try normal generation flow
+      // Strategy 4: If all else fails, try normal generation flow
+      console.log('Trying normal generation flow...')
       return await generateQRCode(ticketId)
     } catch (err) {
+      console.error('All QR download strategies failed:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to download QR code'
       setError(errorMessage)
       throw new Error(errorMessage)
     } finally {
       setLoading(false)
     }
-  }, [generateQRCode])
+  }, [generateQRCode, createBlobUrl])
 
-  return { qrCodeUrl, generateQRCode, downloadQRCode, clearQRCode, loading, error, ticketCode, paymentStatus }
+  // Additional helper function to retry QR download with exponential backoff
+  const retryDownloadQRCode = useCallback(async (ticketId: string, maxRetries = 3) => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        console.log(`QR download attempt ${attempt + 1}/${maxRetries}`)
+        return await downloadQRCode(ticketId)
+      } catch (err) {
+        console.warn(`QR download attempt ${attempt + 1} failed:`, err)
+        if (attempt < maxRetries - 1) {
+          // Exponential backoff: wait 2^attempt seconds
+          const waitTime = Math.pow(2, attempt) * 1000
+          console.log(`Waiting ${waitTime}ms before retry...`)
+          await new Promise(resolve => setTimeout(resolve, waitTime))
+        } else {
+          throw err
+        }
+      }
+    }
+  }, [downloadQRCode])
+
+  return { 
+    qrCodeUrl, 
+    generateQRCode, 
+    downloadQRCode, 
+    retryDownloadQRCode,
+    clearQRCode, 
+    loading, 
+    error, 
+    ticketCode, 
+    paymentStatus 
+  }
 }

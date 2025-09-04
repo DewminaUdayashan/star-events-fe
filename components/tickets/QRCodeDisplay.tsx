@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Download, Loader2, Ticket, CheckCircle } from 'lucide-react';
+import { Download, Loader2, Ticket, CheckCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import { useTicketQRCode } from '@/hooks/useTickets';
 
 interface QRCodeDisplayProps {
   ticketId: string;
@@ -14,121 +15,161 @@ interface QRCodeDisplayProps {
 }
 
 export function QRCodeDisplay({ ticketId, eventTitle, ticketCode }: QRCodeDisplayProps) {
-  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const { 
+    qrCodeUrl, 
+    downloadQRCode, 
+    retryDownloadQRCode, 
+    clearQRCode, 
+    loading, 
+    error 
+  } = useTicketQRCode();
 
+  const [retryCount, setRetryCount] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Auto-load QR code on component mount
   useEffect(() => {
-    const fetchQRCode = async () => {
-      try {
-        setIsLoading(true);
-        const token = localStorage.getItem('token');
-        
-        // First try to generate QR code if it doesn't exist
-        const generateResponse = await fetch('http://localhost:5000/api/qr/generate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ticketId: ticketId
-          }),
-        });
-
-        if (generateResponse.ok) {
-          const generateData = await generateResponse.json();
-          if (generateData.success) {
-            setQrCodeUrl(`data:image/png;base64,${generateData.data.qrCodeBase64}`);
-            return;
-          }
+    const loadQRCode = async () => {
+      if (ticketId && !qrCodeUrl && !loading) {
+        try {
+          await downloadQRCode(ticketId);
+        } catch (err) {
+          console.warn('Failed to auto-load QR code:', err);
         }
-
-        // If generation fails, try to fetch existing QR code
-        if (ticketCode) {
-          const fetchResponse = await fetch(`http://localhost:5000/api/qr/${ticketCode}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-
-          if (fetchResponse.ok) {
-            const blob = await fetchResponse.blob();
-            const url = URL.createObjectURL(blob);
-            setQrCodeUrl(url);
-            return;
-          }
-        }
-
-        throw new Error('Failed to load QR code. Please ensure your ticket is paid.');
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Failed to load QR code';
-        setError(errorMsg);
-      } finally {
-        setIsLoading(false);
       }
     };
 
-    fetchQRCode();
+    loadQRCode();
+  }, [ticketId, qrCodeUrl, loading, downloadQRCode]);
 
-    // Cleanup URL object when component unmounts
-    return () => {
-      if (qrCodeUrl && qrCodeUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(qrCodeUrl);
-      }
-    };
-  }, [ticketId, ticketCode, qrCodeUrl]);
-
-  const handleDownload = () => {
-    if (qrCodeUrl) {
+  const handleManualDownload = async () => {
+    if (!qrCodeUrl) return;
+    
+    try {
       const link = document.createElement('a');
       link.href = qrCodeUrl;
       link.download = `ticket-${ticketCode || ticketId}-qr.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    } catch (err) {
+      console.error('Failed to download QR code:', err);
     }
   };
 
-  if (isLoading) {
+  const handleRetry = async () => {
+    try {
+      setIsDownloading(true);
+      const newRetryCount = retryCount + 1;
+      setRetryCount(newRetryCount);
+      
+      console.log(`Retry attempt ${newRetryCount}`);
+      
+      // Clear existing QR code first
+      clearQRCode();
+      
+      // Use retry function with exponential backoff
+      await retryDownloadQRCode(ticketId);
+      
+    } catch (err) {
+      console.error('QR retry failed:', err);
+      // Show user-friendly error message
+      alert('Unable to load QR code after multiple attempts. Please contact support.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setIsDownloading(true);
+      clearQRCode();
+      await downloadQRCode(ticketId);
+    } catch (err) {
+      console.error('Failed to refresh QR code:', err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const isLoading = loading || isDownloading;
+
+  if (isLoading && !qrCodeUrl) {
     return (
-      <Card className="w-full max-w-sm">
-        <CardContent className="flex items-center justify-center py-8">
-          <div className="flex items-center space-x-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Generating QR code...</span>
+      <Card className="w-full max-w-sm bg-gray-800 border-gray-700">
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center space-y-3 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-purple-400" />
+            <span className="text-gray-300">Loading your QR code...</span>
+            <span className="text-gray-500 text-sm">Please wait</span>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  if (error) {
+  if (error && !qrCodeUrl) {
     return (
-      <Card className="w-full max-w-sm">
+      <Card className="w-full max-w-sm bg-gray-800 border-gray-700">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Ticket className="h-5 w-5" />
-            Ticket QR Code
+          <CardTitle className="flex items-center gap-2 text-white">
+            <AlertTriangle className="h-5 w-5 text-red-400" />
+            QR Code Error
           </CardTitle>
+          <CardDescription className="text-gray-400">
+            {eventTitle}
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Alert className="border-red-200 bg-red-50">
-            <AlertDescription>{error}</AlertDescription>
+        <CardContent className="space-y-4">
+          <Alert className="border-red-600 bg-red-500/10">
+            <AlertDescription className="text-red-400">
+              {error}
+            </AlertDescription>
           </Alert>
+          
+          <div className="flex flex-col space-y-2">
+            <Button
+              onClick={handleRetry}
+              disabled={isLoading}
+              variant="outline"
+              size="sm"
+              className="w-full border-gray-600 bg-transparent text-white hover:bg-gray-700"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Retrying...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry {retryCount > 0 && `(${retryCount + 1})`}
+                </>
+              )}
+            </Button>
+            
+            <Button
+              onClick={() => alert(`Please contact support with your ticket ID: ${ticketId}`)}
+              variant="outline"
+              size="sm"
+              className="w-full text-gray-400 hover:text-white"
+            >
+              Contact Support
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm bg-gray-800 border-gray-700">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CheckCircle className="h-5 w-5 text-green-500" />
+        <CardTitle className="flex items-center gap-2 text-white">
+          <CheckCircle className="h-5 w-5 text-green-400" />
           Your Ticket
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-gray-400">
           {eventTitle}
         </CardDescription>
       </CardHeader>
@@ -143,25 +184,64 @@ export function QRCodeDisplay({ ticketId, eventTitle, ticketCode }: QRCodeDispla
                 height={200}
                 className="rounded"
                 unoptimized
+                priority
               />
             )}
           </div>
         </div>
         
-        <div className="text-center space-y-2">
-          <p className="text-sm text-gray-600">
+        <div className="text-center space-y-3">
+          <p className="text-sm text-gray-300">
             Present this QR code at the event entrance
           </p>
           {ticketCode && (
-            <p className="text-xs text-gray-500 font-mono">
-              Ticket Code: {ticketCode}
+            <p className="text-xs text-gray-500 font-mono bg-gray-900 p-2 rounded">
+              Code: {ticketCode}
             </p>
           )}
-          <Button onClick={handleDownload} variant="outline" size="sm" className="w-full">
-            <Download className="h-4 w-4 mr-2" />
-            Download QR Code
-          </Button>
+          
+          <div className="flex space-x-2">
+            <Button 
+              onClick={handleManualDownload} 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 border-gray-600 bg-transparent text-white hover:bg-gray-700"
+              disabled={!qrCodeUrl}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+            
+            <Button 
+              onClick={handleRefresh} 
+              variant="outline" 
+              size="sm" 
+              className="border-gray-600 bg-transparent text-white hover:bg-gray-700"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
+
+        {/* Debug Info for Development */}
+        {process.env.NODE_ENV === 'development' && (
+          <details className="text-xs text-gray-500 mt-4">
+            <summary className="cursor-pointer hover:text-gray-400">Debug Info</summary>
+            <div className="mt-2 space-y-1 bg-gray-900 p-2 rounded font-mono">
+              <div>Ticket ID: {ticketId}</div>
+              <div>Ticket Code: {ticketCode || 'Not provided'}</div>
+              <div>QR URL: {qrCodeUrl ? 'Generated ✓' : 'Not generated ✗'}</div>
+              <div>Loading: {loading.toString()}</div>
+              <div>Retry Count: {retryCount}</div>
+              <div>Error: {error || 'None'}</div>
+            </div>
+          </details>
+        )}
       </CardContent>
     </Card>
   );

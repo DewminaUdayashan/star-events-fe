@@ -162,6 +162,13 @@ class ApiClient {
 
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.get<T>(url, config);
+    
+    // Don't process binary data (blobs, arraybuffers, etc.)
+    if (config?.responseType === 'blob' || config?.responseType === 'arraybuffer' || 
+        response.data instanceof Blob || response.data instanceof ArrayBuffer) {
+      return response.data as T;
+    }
+    
     return this.processResponse(response.data) as T;
   }
 
@@ -171,6 +178,13 @@ class ApiClient {
     config?: AxiosRequestConfig
   ): Promise<T> {
     const response = await this.client.post<T>(url, data, config);
+    
+    // Don't process binary data (blobs, arraybuffers, etc.)
+    if (config?.responseType === 'blob' || config?.responseType === 'arraybuffer' || 
+        response.data instanceof Blob || response.data instanceof ArrayBuffer) {
+      return response.data as T;
+    }
+    
     return this.processResponse(response.data) as T;
   }
 
@@ -180,11 +194,25 @@ class ApiClient {
     config?: AxiosRequestConfig
   ): Promise<T> {
     const response = await this.client.put<T>(url, data, config);
+    
+    // Don't process binary data (blobs, arraybuffers, etc.)
+    if (config?.responseType === 'blob' || config?.responseType === 'arraybuffer' || 
+        response.data instanceof Blob || response.data instanceof ArrayBuffer) {
+      return response.data as T;
+    }
+    
     return this.processResponse(response.data) as T;
   }
 
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.delete<T>(url, config);
+    
+    // Don't process binary data (blobs, arraybuffers, etc.)
+    if (config?.responseType === 'blob' || config?.responseType === 'arraybuffer' || 
+        response.data instanceof Blob || response.data instanceof ArrayBuffer) {
+      return response.data as T;
+    }
+    
     return this.processResponse(response.data) as T;
   }
 
@@ -194,6 +222,13 @@ class ApiClient {
     config?: AxiosRequestConfig
   ): Promise<T> {
     const response = await this.client.patch<T>(url, data, config);
+    
+    // Don't process binary data (blobs, arraybuffers, etc.)
+    if (config?.responseType === 'blob' || config?.responseType === 'arraybuffer' || 
+        response.data instanceof Blob || response.data instanceof ArrayBuffer) {
+      return response.data as T;
+    }
+    
     return this.processResponse(response.data) as T;
   }
 }
