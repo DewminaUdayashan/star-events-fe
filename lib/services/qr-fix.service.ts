@@ -13,7 +13,7 @@ export class QRFixService {
       try {
         ticket = await apiClient.get(`/api/Tickets/${ticketId}`)
         console.log('✅ Ticket data:', ticket)
-        
+        ticket = ticket.data;
         // Handle both camelCase and PascalCase from API
         const isPaid = ticket.isPaid || ticket.IsPaid
         console.log('💳 Payment status check:', { 
@@ -82,7 +82,7 @@ export class QRFixService {
         qrResult = await apiClient.get(`/api/Tickets/${ticketId}/qrcode`)
         console.log('✅ QR result data:', qrResult)
         
-        if (!qrResult.Success) {
+        if (!qrResult.success) {
           console.warn('⚠️ QR generation returned success=false:', qrResult)
           return { success: false, error: qrResult.Message || 'QR code generation failed' }
         }
@@ -176,7 +176,7 @@ export class QRFixService {
       }
       
       // Handle both camelCase and PascalCase from API
-      const isPaid = ticket.isPaid || ticket.IsPaid
+      const isPaid = ticket.data.isPaid || ticket.dataIsPaid
       if (!isPaid) {
         throw new Error('Ticket is not paid yet. Please complete payment first.')
       }
