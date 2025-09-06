@@ -109,8 +109,18 @@ export class AdminService {
     return apiClient.get<Event>(`/api/admin/events/${id}`);
   }
 
-  async updateEvent(id: string, event: Partial<Event>): Promise<Event> {
-    return apiClient.put<Event>(`/api/admin/events/${id}`, event);
+  async updateEvent(id: string, eventData: FormData | Partial<Event> | any): Promise<Event> {
+    if (eventData instanceof FormData) {
+      // Handle FormData for multipart/form-data requests
+      return apiClient.put<Event>(`/api/admin/events/${id}`, eventData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    } else {
+      // Handle regular JSON data
+      return apiClient.put<Event>(`/api/admin/events/${id}`, eventData);
+    }
   }
 
   async deleteEvent(id: string): Promise<void> {

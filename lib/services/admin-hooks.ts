@@ -83,6 +83,60 @@ export function usePublishEvent() {
   });
 }
 
+export function useAdminEventForEdit(id: string) {
+  return useQuery({
+    queryKey: adminKeys.eventDetail(id),
+    queryFn: () => adminService.getEventById(id),
+    enabled: !!id,
+    staleTime: 1 * 60 * 1000, // 1 minute - edit data should be fresh
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useAdminUpdateEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      event,
+      eventData,
+      ...data
+    }: {
+      id: string;
+      event?: Partial<Event>;
+      eventData?: FormData;
+      [key: string]: any;
+    }) => {
+      // If eventData is provided, use it (FormData), otherwise use event or spread data
+      const updateData = eventData || event || data;
+      return adminService.updateEvent(id, updateData);
+    },
+    onSuccess: (_, { id }) => {
+      // Invalidate and refetch event details
+      queryClient.invalidateQueries({ queryKey: adminKeys.eventDetail(id) });
+      // Invalidate events list to update the dashboard
+      queryClient.invalidateQueries({ queryKey: adminKeys.events() });
+      // Invalidate statistics
+      queryClient.invalidateQueries({ queryKey: adminKeys.eventStatistics() });
+    },
+  });
+}
+
+export function useAdminDeleteEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => adminService.deleteEvent(id),
+    onSuccess: () => {
+      // Invalidate events list to update the dashboard
+      queryClient.invalidateQueries({ queryKey: adminKeys.events() });
+      // Invalidate statistics
+      queryClient.invalidateQueries({ queryKey: adminKeys.eventStatistics() });
+    },
+  });
+}
+
 // Admin Organizers Hooks
 export function useAdminOrganizers(filters?: OrganizerFilters) {
   return useQuery({
