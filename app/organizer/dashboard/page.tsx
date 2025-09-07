@@ -14,14 +14,18 @@ import {
   BarChart3,
   Ticket,
   Clock,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { mockEvents } from "@/data/mockEvents";
+import { useOrganizerEvents } from "@/lib/services";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export default function OrganizerDashboard() {
   const { user, roles } = useAuth();
+  const { data: organizerEvents, isLoading, error } = useOrganizerEvents();
+  
   console.log("OrganizerDashboard - User:", user);
   console.log("OrganizerDashboard - Roles:", roles);
 
@@ -43,13 +47,27 @@ export default function OrganizerDashboard() {
     );
   }
 
-  // Mock organizer events (filter by organizerId in real app)
-  const organizerEvents = mockEvents.slice(0, 3);
-  const totalRevenue = 125000;
-  const totalTicketsSold = 450;
-  const activeEvents = organizerEvents.filter(
-    (event) => event.status === "upcoming"
-  ).length;
+  // Calculate stats from real data
+  const recentEvents = organizerEvents?.slice(0, 3) || [];
+  const totalRevenue = 125000; // This should come from dashboard API
+  const totalTicketsSold = 450; // This should come from dashboard API
+  const activeEvents = organizerEvents?.filter(
+    (event) => {
+      const eventDate = new Date(event.eventDate);
+      const now = new Date();
+      return eventDate > now && event.isPublished;
+    }
+  ).length || 0;
+
+  // Helper function to get event status
+  const getEventStatus = (event: any) => {
+    const eventDate = new Date(event.eventDate);
+    const now = new Date();
+    
+    if (eventDate < now) return "completed";
+    if (eventDate.toDateString() === now.toDateString()) return "ongoing";
+    return "upcoming";
+  };
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -141,7 +159,7 @@ export default function OrganizerDashboard() {
                   <div>
                     <p className="text-gray-400 text-sm">Total Events</p>
                     <p className="text-2xl font-bold text-white">
-                      {organizerEvents.length}
+                      {organizerEvents?.length || 0}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center">
@@ -268,71 +286,102 @@ export default function OrganizerDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {organizerEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex items-center justify-between p-4 border border-gray-700 rounded-lg"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
-                        <Calendar className="h-8 w-8 text-gray-400" />
-                      </div>
-                      <div>
-                        <h3 className="text-white font-semibold">
-                          {event.title}
-                        </h3>
-                        <p className="text-gray-400 text-sm">
-                          {new Date(event.date).toLocaleDateString()} •{" "}
-                          {event.venue}
-                        </p>
-                        <div className="flex items-center space-x-4 mt-1">
-                          <span className="text-sm text-gray-400">
-                            {event.ticketsAvailable}/{event.totalTickets}{" "}
-                            tickets left
-                          </span>
-                          <Badge
-                            className={
-                              event.status === "upcoming"
-                                ? "bg-green-600"
-                                : event.status === "ongoing"
-                                ? "bg-blue-600"
-                                : "bg-gray-600"
-                            }
-                          >
-                            {event.status}
-                          </Badge>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                  <span className="ml-2 text-gray-400">Loading events...</span>
+                </div>
+              ) : error ? (
+                <div className="flex items-center justify-center py-8">
+                  <AlertCircle className="h-8 w-8 text-red-500" />
+                  <span className="ml-2 text-gray-400">Failed to load events</span>
+                </div>
+              ) : recentEvents.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+                  <p className="text-gray-400">No events found</p>
+                  <Link href="/organizer/events/create">
+                    <Button className="mt-4 bg-purple-600 hover:bg-purple-700">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Your First Event
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentEvents.map((event) => {
+                    const eventStatus = getEventStatus(event);
+                    return (
+                      <div
+                        key={event.id}
+                        className="flex items-center justify-between p-4 border border-gray-700 rounded-lg"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
+                            <Calendar className="h-8 w-8 text-gray-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-white font-semibold">
+                              {event.title}
+                            </h3>
+                            <p className="text-gray-400 text-sm">
+                              {new Date(event.eventDate).toLocaleDateString()} •{" "}
+                              {event.venueName}
+                            </p>
+                            <div className="flex items-center space-x-4 mt-1">
+                              <span className="text-sm text-gray-400">
+                                {event.isPublished ? "Published" : "Draft"}
+                              </span>
+                              <Badge
+                                className={
+                                  eventStatus === "upcoming"
+                                    ? "bg-green-600"
+                                    : eventStatus === "ongoing"
+                                    ? "bg-blue-600"
+                                    : "bg-gray-600"
+                                }
+                              >
+                                {eventStatus}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Link href={`/events/${event.id}`}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-gray-600 bg-transparent"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                          </Link>
+                          <Link href={`/organizer/events/${event.id}/edit`}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-gray-600 bg-transparent"
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+                          </Link>
+                          <Link href={`/organizer/analytics/${event.id}`}>
+                            <Button
+                              size="sm"
+                              className="bg-purple-600 hover:bg-purple-700"
+                            >
+                              <BarChart3 className="h-4 w-4 mr-1" />
+                              Analytics
+                            </Button>
+                          </Link>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-gray-600 bg-transparent"
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-gray-600 bg-transparent"
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="bg-purple-600 hover:bg-purple-700"
-                      >
-                        <BarChart3 className="h-4 w-4 mr-1" />
-                        Analytics
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

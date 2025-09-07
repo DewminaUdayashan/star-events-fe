@@ -518,7 +518,7 @@ export default function EditEventPage() {
               <p className="text-gray-400 mt-1">
                 Editing: {eventData.title || "Untitled Event"}
               </p>
-              {process.env.NODE_ENV === 'development' && (
+              {/* {process.env.NODE_ENV === 'development' && (
                 <div className="text-xs text-gray-500 mt-2 space-y-1">
                   <p><strong>Event ID:</strong> {eventId}</p>
                   <p><strong>API Endpoint:</strong> /api/events/{eventId}</p>
@@ -534,7 +534,7 @@ export default function EditEventPage() {
                   <p><strong>Venues loaded:</strong> {venuesData ? venuesData.length : 0}</p>
                   <p><strong>Prices loaded:</strong> {eventData.prices ? eventData.prices.length : 0}</p>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
 
