@@ -1,3 +1,20 @@
+/**
+ * Event Edit Page Component
+ * 
+ * This component provides a comprehensive event editing interface for organizers.
+ * It fetches data from two API endpoints:
+ * 
+ * 1. GET /api/events/{eventId} - Fetches specific event details for pre-populating the form
+ * 2. GET /api/venues - Fetches all available venues for the venue dropdown
+ * 
+ * The component uses useEffect to fetch both datasets when the component mounts,
+ * and useState to manage the form state. All form fields are pre-populated with
+ * the fetched event data, including proper handling of the prices array conversion
+ * to the required JSON string format.
+ * 
+ * Route: /organizer/events/:eventId/edit
+ */
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -31,15 +48,32 @@ import {
   ImageIcon,
   DollarSign,
   Users,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
-  useCreateEvent,
   useUpdateEvent,
-  useOrganizerEvent,
+  useOrganizerEventForEdit,
 } from "@/lib/services/organizer-hooks";
+import { useVenues } from "@/lib/services/venues-hooks";
 import { VenueSelect } from "@/components/VenueSelect";
 import { getImageUrl } from "@/lib/utils";
+import type { Event, EventPrice } from "@/lib/types/api";
+
+// Type for the simplified event edit response
+interface EventEditResponse {
+  id: string;
+  title: string;
+  description: string;
+  eventDate: string;
+  eventTime: string;
+  category: string;
+  image: string;
+  imageUrl: string;
+  isPublished: boolean;
+  venueId: string;
+  venueName: string;
+}
 
 interface PriceTier {
   name: string;
@@ -88,19 +122,24 @@ export default function EditEventPage() {
   const router = useRouter();
   const params = useParams();
   const eventId = params?.id as string;
-  const isEditMode = true; // Always true for edit page
   const { toast } = useToast();
 
-  // API hooks
-  const createEventMutation = useCreateEvent();
+  // API hooks for data fetching
   const updateEventMutation = useUpdateEvent();
-
-  // Only load event if we have an eventId
+  
+  // Fetch specific event data from /api/organizer/events/{eventId}
   const {
-    data: existingEvent,
+    data: eventData,
     isLoading: isLoadingEvent,
     error: eventError,
-  } = useOrganizerEvent(eventId);
+  } = useOrganizerEventForEdit(eventId);
+
+  // Fetch all available venues from /api/venues
+  const {
+    data: venuesData,
+    isLoading: isLoadingVenues,
+    error: venuesError,
+  } = useVenues();
 
   // Form state
   const [formData, setFormData] = useState<FormData>({
@@ -125,23 +164,59 @@ export default function EditEventPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  // Load existing event data for editing
+  // Load existing event data for editing when component mounts
   useEffect(() => {
-    if (existingEvent && !isLoadingEvent) {
-      const event = existingEvent;
-
-      setFormData({
-        title: event.title || "",
-        description: event.description || "",
-        eventDate: event.eventDate
-          ? new Date(event.eventDate).toISOString().split("T")[0]
-          : "",
-        eventTime: event.eventTime || "",
-        venueId: event.venueId || "",
-        category: event.category || "",
-        isPublished: event.isPublished,
-        imageFile: null,
-        priceTiers: event.prices?.map((p) => ({
+    if (eventData && !isLoadingEvent) {
+      console.log("Loading event data for editing:", eventData);
+      console.log("Event data keys:", Object.keys(eventData));
+      
+      // Format the event date properly for date input (YYYY-MM-DD)
+      let formattedDate = "";
+      if (eventData.eventDate) {
+        try {
+          const dateObj = new Date(eventData.eventDate);
+          formattedDate = dateObj.toISOString().split("T")[0];
+          console.log("Formatted date:", formattedDate, "from", eventData.eventDate);
+        } catch (e) {
+          console.error("Error formatting date:", e);
+          formattedDate = "";
+        }
+      }
+      
+      // Format the event time for the time input (HH:MM format)
+      let formattedTime = "";
+      if (eventData.eventTime) {
+        try {
+          const timeDate = new Date(eventData.eventTime);
+          formattedTime = timeDate.toTimeString().substring(0, 5); // Extract HH:MM
+          console.log("Formatted time:", formattedTime, "from", eventData.eventTime);
+        } catch (e) {
+          console.error("Error formatting time:", e);
+          // Fallback if eventTime is already in HH:MM format
+          formattedTime = eventData.eventTime || "";
+        }
+      }
+      
+      // Handle image preview
+      let imagePreviewUrl = null;
+      if (eventData.imageUrl) {
+        imagePreviewUrl = eventData.imageUrl.startsWith('http') 
+          ? eventData.imageUrl 
+          : getImageUrl(eventData.imageUrl);
+        console.log("Image preview URL:", imagePreviewUrl);
+      }
+    
+      // Set form data with proper mapping
+      const newFormData = {
+        title: eventData.title || "",
+        description: eventData.description || "",
+        eventDate: formattedDate,
+        eventTime: formattedTime,
+        venueId: eventData.venueId || "",
+        category: eventData.category || "",
+        isPublished: Boolean(eventData.isPublished),
+        imageFile: null, // Reset file input
+        priceTiers: eventData.prices?.map((p: EventPrice) => ({
           name: p.category || "General",
           price: p.price,
           availableTickets: p.stock,
@@ -152,13 +227,17 @@ export default function EditEventPage() {
             availableTickets: 100,
           },
         ],
-      });
+      };
+      
+      console.log("Setting form data:", newFormData);
+      setFormData(newFormData);
 
-      if (event.imageUrl) {
-        setImagePreview(getImageUrl(event.imageUrl));
+      // Set image preview
+      if (imagePreviewUrl) {
+        setImagePreview(imagePreviewUrl);
       }
     }
-  }, [existingEvent, isLoadingEvent]);
+  }, [eventData, isLoadingEvent]);
 
   // Validation
   const validateForm = (): boolean => {
@@ -358,28 +437,55 @@ export default function EditEventPage() {
     setImagePreview(null);
   };
 
-  // Loading state
-  if (isLoadingEvent) {
+  // Loading state - show loading while fetching event data or venues
+  if (isLoadingEvent || isLoadingVenues) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-purple-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto mb-4" />
-          <p className="text-white">Loading event data...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-purple-400 mx-auto mb-4" />
+          <p className="text-white">
+            {isLoadingEvent && "Loading event data..."}
+            {isLoadingVenues && !isLoadingEvent && "Loading venues..."}
+            {isLoadingEvent && isLoadingVenues && "Loading data..."}
+          </p>
         </div>
       </div>
     );
   }
 
-  // Error state
-  if (eventError) {
+  // Error state - show error if either API call fails
+  if (eventError || venuesError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-purple-900 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-4">
-            Error Loading Event
+            Error Loading Data
           </h1>
           <p className="text-gray-400 mb-6">
-            Failed to load event data. Please try again.
+            {eventError && "Failed to load event data. "}
+            {venuesError && "Failed to load venues. "}
+            Please try again.
+          </p>
+          <Link href="/organizer/events">
+            <Button className="bg-purple-600 hover:bg-purple-700">
+              Back to Events
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render form if we don't have event data yet
+  if (!eventData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-purple-900 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">
+            Event Not Found
+          </h1>
+          <p className="text-gray-400 mb-6">
+            The requested event could not be found.
           </p>
           <Link href="/organizer/events">
             <Button className="bg-purple-600 hover:bg-purple-700">
@@ -399,19 +505,36 @@ export default function EditEventPage() {
           <div className="flex items-center gap-4 mb-8">
             <Link href="/organizer/events">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="text-gray-400 hover:text-white"
+                className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700"
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Events
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
               </Button>
             </Link>
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-bold text-white">Edit Event</h1>
-              <p className="text-gray-400">
-                Update your event details and settings
+              <p className="text-gray-400 mt-1">
+                Editing: {eventData.title || "Untitled Event"}
               </p>
+              {process.env.NODE_ENV === 'development' && (
+                <div className="text-xs text-gray-500 mt-2 space-y-1">
+                  <p><strong>Event ID:</strong> {eventId}</p>
+                  <p><strong>API Endpoint:</strong> /api/events/{eventId}</p>
+                  <p><strong>Title:</strong> {eventData.title}</p>
+                  <p><strong>Category:</strong> {eventData.category}</p>
+                  <p><strong>Venue ID:</strong> {eventData.venueId}</p>
+                  <p><strong>Venue Name:</strong> {(eventData as any).venueName || eventData.venue?.name || 'Not specified'}</p>
+                  <p><strong>Event Date:</strong> {eventData.eventDate}</p>
+                  <p><strong>Event Time:</strong> {eventData.eventTime}</p>
+                  <p><strong>Published:</strong> {eventData.isPublished ? 'Yes' : 'No'}</p>
+                  <p><strong>Image:</strong> {eventData.image || 'None'}</p>
+                  <p><strong>Image URL:</strong> {eventData.imageUrl || 'None'}</p>
+                  <p><strong>Venues loaded:</strong> {venuesData ? venuesData.length : 0}</p>
+                  <p><strong>Prices loaded:</strong> {eventData.prices ? eventData.prices.length : 0}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -534,7 +657,7 @@ export default function EditEventPage() {
                       Category *
                     </Label>
                     <Select
-                      value={formData.category}
+                      value={formData.category || eventData.category} 
                       onValueChange={(value) =>
                         handleInputChange("category", value)
                       }
@@ -574,11 +697,20 @@ export default function EditEventPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {imagePreview ? (
+                {/* Show current image info */}
+                {eventData.image && (
+                  <div className="mb-4 p-3 bg-gray-700/30 rounded-lg">
+                    <p className="text-sm text-gray-300">
+                      <strong>Current image:</strong> {eventData.image}
+                    </p>
+                  </div>
+                )}
+                
+                {imagePreview || eventData.image ? (
                   <div className="relative">
                     <div className="relative w-full h-48 rounded-lg overflow-hidden bg-gray-700">
                       <Image
-                        src={imagePreview}
+                        src={imagePreview || eventData.imageUrl || getImageUrl(eventData.image)}
                         alt="Event image preview"
                         fill
                         className="object-cover"

@@ -99,6 +99,11 @@ export class OrganizerService {
     return apiClient.get<Event>(`/api/events/${id}`);
   }
 
+  // Get organizer's specific event for editing
+  async getOrganizerEventForEdit(id: string): Promise<Event> {
+    return apiClient.get<Event>(`/api/events/${id}`);
+  }
+
   async createEvent(eventData: FormData | Partial<Event>): Promise<Event> {
     if (eventData instanceof FormData) {
       // Handle FormData for multipart/form-data requests
@@ -152,7 +157,7 @@ export class OrganizerService {
   }
 
   async getEventAnalytics(eventId: string): Promise<EventAnalytics> {
-    return apiClient.get<EventAnalytics>(
+    return apiClient.post<EventAnalytics>(
       `/api/organizer/events/${eventId}/analytics`
     );
   }
