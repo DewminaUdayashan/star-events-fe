@@ -13,6 +13,20 @@ export {
 export { ticketsService, TicketsService } from "./tickets.service";
 export { paymentService, PaymentService } from "./payment.service";
 export { organizerService, OrganizerService } from "./organizer.service";
+export {
+  useOrganizerDashboard,
+  useOrganizerEvents,
+  useOrganizerEvent,
+  useOrganizerEventForEdit,
+  useEventAnalytics,
+  useOrganizerProfile,
+  useCreateEvent,
+  useUpdateEvent,
+  useDeleteEvent,
+  usePublishEvent as useOrganizerPublishEvent,
+  useUnpublishEvent,
+  useDuplicateEvent,
+} from "./organizer-hooks";
 export { adminService, AdminService } from "./admin.service";
 export {
   useAdminEvents,

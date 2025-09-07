@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "my-v0-project",
+      "name": "startEvent",
       "dependencies": {
         "@hookform/resolvers": "^3.9.1",
         "@radix-ui/react-accordion": "latest",

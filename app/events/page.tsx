@@ -402,7 +402,7 @@ export default function EventsPage() {
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-gray-400 text-sm">
                       <Calendar className="h-4 w-4 mr-2" />
-                      <span>
+                      <span>z
                         {new Date(event.eventDate).toLocaleDateString()} at{" "}
                         {new Date(event.eventTime).toLocaleTimeString([], {
                           hour: "2-digit",
@@ -413,13 +413,15 @@ export default function EventsPage() {
                     <div className="flex items-center text-gray-400 text-sm">
                       <MapPin className="h-4 w-4 mr-2" />
                       <span>
-                        {event.venue?.name}, {event.venue?.location}
+                        {event.venueName
+                          ? event.venueName
+                          : event.venue?.name}
                       </span>
                     </div>
-                    <div className="flex items-center text-gray-400 text-sm">
+                    {/* <div className="flex items-center text-gray-400 text-sm">
                       <Users className="h-4 w-4 mr-2" />
                       <span>{event.venue?.capacity} capacity</span>
-                    </div>
+                    </div> */}
                   </div>
 
                   <div className="flex items-center justify-between">

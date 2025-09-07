@@ -72,6 +72,18 @@ export function useOrganizerEvent(id: string) {
   });
 }
 
+export function useOrganizerEventForEdit(id: string) {
+  const { user, roles } = useAuth();
+
+  return useQuery({
+    queryKey: [...organizerKeys.event(id), 'edit'],
+    queryFn: () => organizerService.getOrganizerEventForEdit(id),
+    enabled: !!user && roles.includes("Organizer" as any) && !!id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
 // Event Analytics Hook
 export function useEventAnalytics(eventId: string) {
   const { user, roles } = useAuth();
