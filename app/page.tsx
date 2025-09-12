@@ -1,34 +1,31 @@
 "use client";
-import Navbar from "@/components/Navbar"
-import Footer from "@/components/Footer"
-import HeroCarousel from "@/components/HeroCarousel"
-import SearchAndFilter from "@/components/SearchAndFilter"
-import TrendingEvents from "@/components/TrendingEvents"
-import EventCategories from "@/components/EventCategories"
-import PromotionsSection from "@/components/PromotionsSection"
-import QuickStats from "@/components/QuickStats"
-import AboutSection from "@/components/AboutSection"
-import ServicesSection from "@/components/ServicesSection"
-
-// Mock user data - in a real app, this would come from authentication context
-const mockUser = {
-  id: "1",
-  firstName: "John",
-  lastName: "Doe",
-  role: "customer" as const,
-  avatar: "/user-avatar.jpg",
-}
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import HeroCarousel from "@/components/HeroCarousel";
+import SearchAndFilter from "@/components/SearchAndFilter";
+import TrendingEvents from "@/components/TrendingEvents";
+import EventCategories from "@/components/EventCategories";
+import PromotionsSection from "@/components/PromotionsSection";
+import QuickStats from "@/components/QuickStats";
+import AboutSection from "@/components/AboutSection";
+import ServicesSection from "@/components/ServicesSection";
+import AuthDebug from "@/components/AuthDebug";
 
 export default function HomePage() {
   const handleSearch = (query: string, filters: any) => {
     // In a real app, this would trigger search functionality
-    console.log("Search:", query, filters)
-  }
+    console.log("Search:", query, filters);
+  };
 
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Navigation */}
-      <Navbar user={mockUser} cartItemCount={2} />
+      <Navbar cartItemCount={2} />
+
+      {/* Auth Debug - Temporary */}
+      <div className="fixed top-20 right-4 z-40">
+        <AuthDebug />
+      </div>
 
       {/* Main Content */}
       <main>
@@ -64,5 +61,5 @@ export default function HomePage() {
       {/* Footer */}
       <Footer />
     </div>
-  )
+  );
 }
