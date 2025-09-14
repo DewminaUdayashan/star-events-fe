@@ -1,9 +1,31 @@
 import { apiClient } from "../api-client"
-import type { LoginRequest, LoginResponse, RegisterRequest, ApplicationUser } from "../types/api"
+import type { LoginRequest, LoginResponse, RegisterRequest, RegisterRequestWrapper, RegisterResponse, ApplicationUser } from "../types/api"
 
 export class AuthService {
-  async register(data: RegisterRequest): Promise<ApplicationUser> {
-    return apiClient.post("/api/Auth/register", data)
+  async register(data: RegisterRequestWrapper): Promise<RegisterResponse> {
+    // Prepare data in exact format expected by backend
+    const registrationPayload = {
+      request: {
+        email: data.request.email,
+        password: data.request.password,
+        fullName: data.request.fullName,
+        address: data.request.address || null,
+        dateOfBirth: data.request.dateOfBirth ? new Date(data.request.dateOfBirth).toISOString() : "",
+        organizationName: data.request.organizationName || null,
+        organizationContact: data.request.organizationContact || null,
+      }
+    }
+
+    console.log("Sending registration payload:", registrationPayload)
+    
+    const response = await apiClient.post<RegisterResponse>("/api/Auth/register", registrationPayload)
+    
+    // Token and user data are handled by AuthContext after successful registration
+    // if (response.token) {
+    //   apiClient.setToken(response.token)
+    // }
+    
+    return response
   }
 
   async login(data: LoginRequest): Promise<LoginResponse> {

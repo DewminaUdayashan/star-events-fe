@@ -14,6 +14,8 @@ import type {
   LoginRequest,
   RegisterRequest,
   LoginResponse,
+  RegisterRequestWrapper,
+  RegisterResponse,
 } from "@/lib/types/api";
 
 export type UserRole = "Admin" | "Organizer" | "Customer";
@@ -145,26 +147,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (data: RegisterRequest) => {
     try {
-      const response = await authService.register(data);
+      const response = await authService.register({
+        request: data,
+      } as RegisterRequestWrapper) as RegisterResponse;
 
-      // For register, we might not get roles in response, so default to Customer
-      const roles: UserRole[] = ["Customer"];
+      // Extract roles from response or default to Customer
+      const roles: UserRole[] = response.data.roles as UserRole[] || ["Customer"];
 
+      // Store everything in localStorage
       if (typeof window !== "undefined") {
-        localStorage.setItem("user", JSON.stringify(response));
+        localStorage.setItem("user", JSON.stringify(response.data.user));
         localStorage.setItem("roles", JSON.stringify(roles));
+        localStorage.setItem("auth_token", response.data.token);
       }
 
       setAuthState({
-        user: response,
-        token: apiClient.getToken(),
+        user: response.data.user,
+        token: response.data.token,
         roles,
         isAuthenticated: true,
         isLoading: false,
       });
-    } catch (error) {
+      console.log("Registration successful:", response);
+    } catch (error: any) {
+      console.error("Registration failed:", error);
       setAuthState((prev) => ({ ...prev, isLoading: false }));
-      throw error;
+      const errorMessage = error.response?.data?.message || error.message || "Registration failed";
+      throw new Error(errorMessage);
     }
   };
 
