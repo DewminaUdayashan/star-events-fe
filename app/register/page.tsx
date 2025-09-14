@@ -48,6 +48,12 @@ export default function RegisterPage() {
       setLoading(false)
       return
     }
+    
+    if (!formData.dateOfBirth) {
+      setError("Date of Birth is required");
+      setLoading(false);
+      return;
+    }
 
     if (!acceptTerms) {
       setError("Please accept the terms and conditions")
@@ -61,9 +67,9 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
         address: formData.address,
-        dateOfBirth: formData.dateOfBirth || undefined,
-        organizationName: formData.organizationName || undefined,
-        organizationContact: formData.organizationContact || undefined,
+        dateOfBirth: new Date(formData.dateOfBirth).toISOString(),
+        organizationName: formData.organizationName || null,
+        organizationContact: formData.organizationContact || null,
       })
       router.push("/")
     } catch (err) {
@@ -163,7 +169,7 @@ export default function RegisterPage() {
 
               <div className="space-y-2">
                 <label htmlFor="dateOfBirth" className="text-sm font-medium text-gray-300">
-                  Date of Birth (Optional)
+                  Date of Birth
                 </label>
                 <Input
                   id="dateOfBirth"
@@ -171,6 +177,7 @@ export default function RegisterPage() {
                   value={formData.dateOfBirth}
                   onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
                   className="bg-gray-900 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 rounded-2xl"
+                  required
                 />
               </div>
 
@@ -184,6 +191,20 @@ export default function RegisterPage() {
                   value={formData.organizationName}
                   onChange={(e) => handleInputChange("organizationName", e.target.value)}
                   placeholder="Your organization"
+                  className="bg-gray-900 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 rounded-2xl"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="organizationContact" className="text-sm font-medium text-gray-300">
+                  Organization Contact (Optional)
+                </label>
+                <Input
+                  id="organizationContact"
+                  type="text"
+                  value={formData.organizationContact}
+                  onChange={(e) => handleInputChange("organizationContact", e.target.value)}
+                  placeholder="Organization contact person or number"
                   className="bg-gray-900 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 rounded-2xl"
                 />
               </div>
@@ -228,7 +249,7 @@ export default function RegisterPage() {
                 <Checkbox
                   id="terms"
                   checked={acceptTerms}
-                  onCheckedChange={setAcceptTerms}
+                  onCheckedChange={(checked) => setAcceptTerms(Boolean(checked))}
                   className="border-gray-600 data-[state=checked]:bg-purple-600 rounded-lg"
                 />
                 <label htmlFor="terms" className="text-sm text-gray-300">
