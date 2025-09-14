@@ -20,7 +20,7 @@ class ApiClient {
   private baseURL: string
   private token: string | null = null
 
-  constructor(baseURL: string = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.starevents.lk") {
+  constructor(baseURL: string = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:5000") {
     this.baseURL = baseURL
     this.client = axios.create({
       baseURL,
@@ -53,7 +53,7 @@ class ApiClient {
           this.clearToken()
           // Redirect to login or refresh token
           if (typeof window !== "undefined") {
-            window.location.href = "/auth/login"
+            window.location.href = "/login"
           }
         }
         return Promise.reject(error)

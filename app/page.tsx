@@ -1,5 +1,5 @@
 "use client";
-import Navbar from "@/components/Navbar"
+import { Navigation } from "@/components/layout/Navigation"
 import Footer from "@/components/Footer"
 import HeroCarousel from "@/components/HeroCarousel"
 import SearchAndFilter from "@/components/SearchAndFilter"
@@ -9,17 +9,13 @@ import PromotionsSection from "@/components/PromotionsSection"
 import QuickStats from "@/components/QuickStats"
 import AboutSection from "@/components/AboutSection"
 import ServicesSection from "@/components/ServicesSection"
-
-// Mock user data - in a real app, this would come from authentication context
-const mockUser = {
-  id: "1",
-  firstName: "John",
-  lastName: "Doe",
-  role: "customer" as const,
-  avatar: "/user-avatar.jpg",
-}
+import { useAuth } from "@/contexts/AuthContext"
+import { useCart } from "@/contexts/CartContext"
 
 export default function HomePage() {
+  const { user } = useAuth()
+  const { items: cartItems } = useCart()
+
   const handleSearch = (query: string, filters: any) => {
     // In a real app, this would trigger search functionality
     console.log("Search:", query, filters)
@@ -28,7 +24,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Navigation */}
-      <Navbar user={mockUser} cartItemCount={2} />
+      <Navigation />
 
       {/* Main Content */}
       <main>
