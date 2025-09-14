@@ -168,7 +168,7 @@ export default function LoginPage() {
             </div>
 
             {/* Demo Credentials */}
-            <div className="mt-6 p-4 bg-gray-900 rounded-2xl border border-gray-700">
+            {/* <div className="mt-6 p-4 bg-gray-900 rounded-2xl border border-gray-700">
               <p className="text-xs text-gray-400 mb-2">Demo Credentials:</p>
               <div className="space-y-1 text-xs">
                 <p className="text-gray-300">
@@ -181,7 +181,7 @@ export default function LoginPage() {
                   Admin: admin@starevents.lk / password123
                 </p>
               </div>
-            </div>
+            </div> */}
           </CardContent>
         </Card>
       </div>
