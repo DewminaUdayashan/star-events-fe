@@ -1,145 +1,230 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import type { ApplicationUser } from "@/lib/types/api"
-import { authService as apiAuthService, type LoginRequest, type RegisterRequest } from "@/lib/services/auth.service"
-import { apiClient } from "@/lib/api-client"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import { apiClient } from "@/lib/api-client";
+import { authService } from "@/lib/services/auth.service";
+import type {
+  ApplicationUser,
+  LoginRequest,
+  RegisterRequest,
+  LoginResponse,
+} from "@/lib/types/api";
 
-interface AuthContextType {
-  user: ApplicationUser | null
-  loading: boolean
-  login: (credentials: LoginRequest) => Promise<void>
-  register: (data: RegisterRequest) => Promise<void>
-  logout: () => void
-  updateProfile: (updates: Partial<ApplicationUser>) => Promise<void>
-  isAuthenticated: boolean
+export type UserRole = "Admin" | "Organizer" | "Customer";
+
+interface AuthState {
+  user: ApplicationUser | null;
+  token: string | null;
+  roles: UserRole[];
+  isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+interface AuthContextType extends AuthState {
+  login: (credentials: LoginRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
+  logout: () => Promise<void>;
+  hasRole: (role: UserRole) => boolean;
+  isRole: (role: UserRole) => boolean;
+  hasAnyRole: (roles: UserRole[]) => boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<ApplicationUser | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    token: null,
+    roles: [],
+    isAuthenticated: false,
+    isLoading: true,
+  });
 
-  // Check for existing token on app load
+  // Initialize auth state from localStorage on mount
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Check if token exists in localStorage
-        const token = apiClient.getToken()
-        
-        if (token) {
-          // Set token in API client
-          apiClient.setToken(token)
-          
-          // Try to get current user with the token
-          try {
-            const currentUser = await apiAuthService.getCurrentUser()
-            setUser(currentUser)
-          } catch (error) {
-            // Token is invalid, clear it
-            console.error("Invalid token, clearing auth:", error)
-            apiClient.clearToken()
-            setUser(null)
+        if (typeof window !== "undefined") {
+          const token = localStorage.getItem("auth_token");
+          const userStr = localStorage.getItem("user");
+          const rolesStr = localStorage.getItem("roles");
+
+          console.log(
+            "Initializing auth - Token:",
+            !!token,
+            "User:",
+            !!userStr,
+            "Roles:",
+            !!rolesStr
+          );
+
+          if (token && userStr && rolesStr) {
+            try {
+              const user = JSON.parse(userStr);
+              const roles = JSON.parse(rolesStr);
+
+              // Set token in API client
+              apiClient.setToken(token);
+
+              setAuthState({
+                user,
+                token,
+                roles,
+                isAuthenticated: true,
+                isLoading: false,
+              });
+
+              console.log("Auth restored from localStorage:", {
+                user: user.fullName,
+                roles,
+              });
+            } catch (parseError) {
+              console.error("Error parsing stored auth data:", parseError);
+              // Clear corrupted data
+              localStorage.removeItem("auth_token");
+              localStorage.removeItem("user");
+              localStorage.removeItem("roles");
+              setAuthState((prev) => ({ ...prev, isLoading: false }));
+            }
+          } else {
+            console.log("No auth data found in localStorage");
+            setAuthState((prev) => ({ ...prev, isLoading: false }));
           }
-        } else {
-          setUser(null)
         }
       } catch (error) {
-        console.error("Failed to initialize auth:", error)
-        setUser(null)
-      } finally {
-        setLoading(false)
+        console.error("Failed to initialize auth:", error);
+        setAuthState((prev) => ({ ...prev, isLoading: false }));
       }
-    }
+    };
 
-    initAuth()
-  }, [])
+    initAuth();
+  }, []);
 
   const login = async (credentials: LoginRequest) => {
     try {
-      setLoading(true)
-      const authResponse = await apiAuthService.login(credentials)
-      
-      // Store token in localStorage and API client
-      if (authResponse.token) {
-        apiClient.setToken(authResponse.token)
+      console.log("Attempting login with:", credentials.email);
+
+      const response = (await authService.login(
+        credentials
+      )) as LoginResponse & { roles?: UserRole[] };
+
+      console.log("Login successful:", response);
+
+      // Extract roles from response or default to Customer
+      const roles: UserRole[] = response.roles || ["Customer"];
+
+      // Store everything in localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(response.user));
+        localStorage.setItem("roles", JSON.stringify(roles));
+        // Token is already stored by authService.login
       }
-      
-      setUser(authResponse.user)
+
+      setAuthState({
+        user: response.user,
+        token: response.token,
+        roles,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+
+      console.log("Auth state updated:", {
+        user: response.user?.fullName,
+        roles,
+      });
     } catch (error) {
-      throw error
-    } finally {
-      setLoading(false)
+      console.error("Login failed:", error);
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      throw error;
     }
-  }
+  };
 
   const register = async (data: RegisterRequest) => {
     try {
-      setLoading(true)
-      const newUser = await apiAuthService.register(data)
-      
-      // If registration includes auto-login, store token
-      if (newUser.token) {
-        apiClient.setToken(newUser.token)
+      const response = await authService.register(data);
+
+      // For register, we might not get roles in response, so default to Customer
+      const roles: UserRole[] = ["Customer"];
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(response));
+        localStorage.setItem("roles", JSON.stringify(roles));
       }
-      
-      setUser(newUser)
+
+      setAuthState({
+        user: response,
+        token: apiClient.getToken(),
+        roles,
+        isAuthenticated: true,
+        isLoading: false,
+      });
     } catch (error) {
-      throw error
-    } finally {
-      setLoading(false)
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      throw error;
     }
-  }
+  };
 
   const logout = async () => {
     try {
-      setLoading(true)
-      await apiAuthService.logout()
-    } catch (error) {
-      console.error("Logout error:", error)
+      await authService.logout();
     } finally {
-      // Always clear local state and token
-      apiClient.clearToken()
-      setUser(null)
-      setLoading(false)
+      console.log("Logging out user");
+
+      // Clear localStorage
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("user");
+        localStorage.removeItem("roles");
+        // Token is cleared by authService.logout
+      }
+
+      setAuthState({
+        user: null,
+        token: null,
+        roles: [],
+        isAuthenticated: false,
+        isLoading: false,
+      });
     }
-  }
+  };
 
-  const updateProfile = async (updates: Partial<ApplicationUser>) => {
-    if (!user) throw new Error("No user logged in")
+  // Role checking utilities
+  const hasRole = (role: UserRole): boolean => {
+    return authState.roles.includes(role);
+  };
 
-    try {
-      // For now, we'll update locally and sync later
-      const updatedUser = { ...user, ...updates }
-      setUser(updatedUser)
-      // TODO: Implement updateProfile in API service
-    } catch (error) {
-      throw error
-    }
-  }
+  const isRole = (role: UserRole): boolean => {
+    return authState.roles.length === 1 && authState.roles[0] === role;
+  };
 
-  const isAuthenticated = !!user
+  const hasAnyRole = (roles: UserRole[]): boolean => {
+    return roles.some((role) => authState.roles.includes(role));
+  };
+
+  const contextValue: AuthContextType = {
+    ...authState,
+    login,
+    register,
+    logout,
+    hasRole,
+    isRole,
+    hasAnyRole,
+  };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      login, 
-      register, 
-      logout, 
-      updateProfile, 
-      isAuthenticated 
-    }}>
-      {children}
-    </AuthContext.Provider>
-  )
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-  return context
+  return context;
 }

@@ -1,47 +1,62 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, Search, ShoppingCart, User, Calendar, Ticket, Settings, LogOut, Star, BarChart3 } from "lucide-react"
-import { useAuth } from "@/contexts/AuthContext"
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Menu,
+  Search,
+  ShoppingCart,
+  User,
+  Calendar,
+  Ticket,
+  Settings,
+  LogOut,
+  Star,
+  BarChart3,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavbarProps {
   user?: {
-    id: string
-    firstName: string
-    lastName: string
-    role: "customer" | "organizer" | "admin"
-    avatar?: string
-  }
-  cartItemCount?: number
+    id: string;
+    firstName: string;
+    lastName: string;
+    role: "customer" | "organizer" | "admin";
+    avatar?: string;
+  };
+  cartItemCount?: number;
 }
 
-export default function Navbar({ user: propUser, cartItemCount = 0 }: NavbarProps) {
-  const { user: authUser, logout } = useAuth()
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
+export default function Navbar({
+  user: propUser,
+  cartItemCount = 0,
+}: NavbarProps) {
+  const { user: authUser, logout } = useAuth();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Use auth user if available, otherwise use prop user
-  const user = authUser || propUser
+  const user = authUser || propUser;
 
   const navigationItems = [
     { href: "/", label: "Home" },
     { href: "/events", label: "Events" },
     { href: "/categories", label: "Categories" },
-  ]
+  ];
 
   const userMenuItems = user
     ? [
-        ...(user.id?.includes("customer") || (!user.id?.includes("admin") && !user.id?.includes("organizer"))
+        ...(user.id?.includes("customer") ||
+        (!user.id?.includes("admin") && !user.id?.includes("organizer"))
           ? [
               { href: "/my-tickets", label: "My Tickets", icon: Ticket },
               { href: "/bookings", label: "Booking History", icon: Calendar },
@@ -49,13 +64,21 @@ export default function Navbar({ user: propUser, cartItemCount = 0 }: NavbarProp
           : []),
         ...(user.id?.includes("organizer")
           ? [
-              { href: "/organizer/dashboard", label: "Dashboard", icon: BarChart3 },
+              {
+                href: "/organizer/dashboard",
+                label: "Dashboard",
+                icon: BarChart3,
+              },
               { href: "/organizer/events", label: "My Events", icon: Calendar },
             ]
           : []),
         ...(user.id?.includes("admin")
           ? [
-              { href: "/admin/dashboard", label: "Admin Dashboard", icon: BarChart3 },
+              {
+                href: "/admin/dashboard",
+                label: "Admin Dashboard",
+                icon: BarChart3,
+              },
               { href: "/admin/users", label: "Manage Users", icon: User },
               { href: "/admin/events", label: "Manage Events", icon: Calendar },
             ]
@@ -63,11 +86,11 @@ export default function Navbar({ user: propUser, cartItemCount = 0 }: NavbarProp
         { href: "/profile", label: "Profile", icon: User },
         { href: "/settings", label: "Settings", icon: Settings },
       ]
-    : []
+    : [];
 
   const handleLogout = () => {
-    logout()
-  }
+    logout();
+  };
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-gray-800 bg-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-gray-900/60">
@@ -119,33 +142,59 @@ export default function Navbar({ user: propUser, cartItemCount = 0 }: NavbarProp
             </Button>
 
             {/* Cart */}
-            {!user?.id?.includes("admin") && !user?.id?.includes("organizer") && (
-              <Link href="/cart">
-                <Button variant="ghost" size="sm" className="relative text-gray-300 hover:text-white rounded-2xl">
-                  <ShoppingCart className="h-5 w-5" />
-                  {cartItemCount > 0 && (
-                    <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-purple-600 p-0 text-xs">
-                      {cartItemCount}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
-            )}
+            {!user?.id?.includes("admin") &&
+              !user?.id?.includes("organizer") && (
+                <Link href="/cart">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="relative text-gray-300 hover:text-white rounded-2xl"
+                  >
+                    <ShoppingCart className="h-5 w-5" />
+                    {cartItemCount > 0 && (
+                      <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-purple-600 p-0 text-xs">
+                        {cartItemCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </Link>
+              )}
 
             {/* User Menu or Auth Buttons */}
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white rounded-2xl">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-300 hover:text-white rounded-2xl"
+                  >
                     <User className="h-5 w-5" />
-                    <span className="ml-2 hidden sm:inline">{user.fullName?.split(" ")[0] || "User"}</span>
+                    <span className="ml-2 hidden sm:inline">
+                      {authUser?.fullName?.split(" ")[0] ||
+                        (propUser && "firstName" in propUser
+                          ? propUser.firstName
+                          : "User")}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-gray-800 border-gray-700 rounded-3xl">
+                <DropdownMenuContent
+                  align="end"
+                  className="w-56 bg-gray-800 border-gray-700 rounded-3xl"
+                >
                   <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium text-white">{user.fullName || "User"}</p>
+                    <p className="text-sm font-medium text-white">
+                      {authUser?.fullName ||
+                        (propUser && "firstName" in propUser
+                          ? `${propUser.firstName} ${propUser.lastName}`
+                          : "User")}
+                    </p>
                     <p className="text-xs text-gray-400">
-                      {user.id?.includes("admin") ? "Admin" : user.id?.includes("organizer") ? "Organizer" : "Customer"}
+                      {user.id?.includes("admin")
+                        ? "Admin"
+                        : user.id?.includes("organizer")
+                        ? "Organizer"
+                        : "Customer"}
                     </p>
                   </div>
                   <DropdownMenuSeparator className="bg-gray-700" />
@@ -173,12 +222,19 @@ export default function Navbar({ user: propUser, cartItemCount = 0 }: NavbarProp
             ) : (
               <div className="flex items-center space-x-2">
                 <Link href="/login">
-                  <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white rounded-2xl">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-300 hover:text-white rounded-2xl"
+                  >
                     Sign In
                   </Button>
                 </Link>
                 <Link href="/register">
-                  <Button size="sm" className="bg-purple-600 hover:bg-purple-700 rounded-2xl">
+                  <Button
+                    size="sm"
+                    className="bg-purple-600 hover:bg-purple-700 rounded-2xl"
+                  >
                     Sign Up
                   </Button>
                 </Link>
@@ -188,11 +244,18 @@ export default function Navbar({ user: propUser, cartItemCount = 0 }: NavbarProp
             {/* Mobile Menu */}
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="md:hidden text-gray-300 hover:text-white rounded-2xl">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="md:hidden text-gray-300 hover:text-white rounded-2xl"
+                >
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-80 bg-gray-900 border-gray-800 rounded-l-3xl">
+              <SheetContent
+                side="right"
+                className="w-80 bg-gray-900 border-gray-800 rounded-l-3xl"
+              >
                 <div className="flex flex-col space-y-4 mt-8">
                   {navigationItems.map((item) => (
                     <Link
@@ -247,5 +310,5 @@ export default function Navbar({ user: propUser, cartItemCount = 0 }: NavbarProp
         )}
       </div>
     </nav>
-  )
+  );
 }
