@@ -6,11 +6,13 @@ import type {
   UseLoyaltyPointsRequest,
   PaginatedResponse,
   PaginationParams,
+  ApiResponse,
 } from "../types/api"
 
 export class TicketsService {
   async bookTicket(data: BookTicketRequest): Promise<Ticket> {
-    return apiClient.post<Ticket>("/api/Tickets/book", data)
+    const response = await apiClient.post<ApiResponse<Ticket>>("/api/Tickets/book", data)
+    return response.data
   }
 
   async getTicket(id: string): Promise<Ticket> {

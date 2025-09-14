@@ -27,7 +27,7 @@ import {
   Plus
 } from 'lucide-react'
 import { useTicketBooking } from '@/hooks/useTickets'
-import { StripePaymentForm } from '@/components/payment/StripePaymentForm'
+import { PaymentWrapper } from '@/components/payment/PaymentWrapper' // Import PaymentWrapper
 import type { Event, EventPrice, CartItem, BookingSummary } from '@/lib/types/api'
 
 interface BookingFlowProps {
@@ -91,10 +91,11 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
       // Update booking summary with new discount
       setBookingSummary(prev => prev ? {
         ...prev,
-        discount: prev.discount + (subtotal - updatedTicket.totalAmount),
+        discount: prev.discount + (prev.total - updatedTicket.totalAmount),
+        total: updatedTicket.totalAmount,
         appliedPromotion: {
           code: discountCode,
-          discount: subtotal - updatedTicket.totalAmount,
+          discount: (prev.total - updatedTicket.totalAmount),
           type: 'percentage' as const
         }
       } : null)
@@ -153,6 +154,7 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
         loyaltyPointsEarned: Math.floor(subtotal * 0.01), // 1% of subtotal
         total: subtotal
       })
+      console.log("Ticket booked. Ticket ID:", ticket.id, "Booking Summary:", { ...bookingSummary, total: subtotal });
 
       setCurrentStep('promotions')
     } catch (err) {
@@ -161,16 +163,22 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
   }
 
   const handlePaymentSuccess = (paymentIntent: any) => {
+    // In the new flow, payment success is handled by Stripe's redirect to booking-confirmation page.
+    // This function will primarily be for frontend state updates if needed after redirection.
     setPaymentStatus('success')
     setCurrentStep('confirmation')
-    setTimeout(() => {
-      onSuccess(ticketId!)
-    }, 2000)
+    // The onSuccess callback to the parent component (BookingPage) should now be triggered
+    // by the booking-confirmation page itself, based on URL parameters.
+    // We can still trigger it here for immediate feedback in the booking flow.
+    if (ticketId) {
+      onSuccess(ticketId);
+    }
   }
 
   const handlePaymentError = (error: string) => {
     setPaymentStatus('error')
     setError(error)
+    // The onError callback can still be used for displaying immediate error feedback.
   }
 
   const renderStepIndicator = () => {
@@ -444,8 +452,14 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
           Back
         </Button>
         <Button
-          onClick={() => setCurrentStep('payment')}
-          disabled={!bookingSummary}
+          onClick={() => {
+            if (bookingSummary && ticketId) {
+              setCurrentStep('payment');
+            } else {
+              setError("Booking summary or ticket ID is missing. Please re-select your tickets.");
+            }
+          }}
+          disabled={!bookingSummary || !ticketId || loading}
           className="bg-purple-600 hover:bg-purple-700"
         >
           Continue to Payment
@@ -455,7 +469,43 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
     </div>
   )
 
-  const renderPaymentStep = () => (
+  // const renderPaymentStep = () => (
+  //   <div className="space-y-6">
+  //     <Card className="bg-gray-800 border-gray-700">
+  //       <CardHeader>
+  //         <CardTitle className="text-white">Payment</CardTitle>
+  //         <CardDescription className="text-gray-400">
+  //           Complete your purchase securely
+  //         </CardDescription>
+  //       </CardHeader>
+  //       <CardContent>
+  //         {bookingSummary && ticketId && (
+  //           <StripePaymentForm
+  //             amount={bookingSummary.total}
+  //             currency="LKR"
+  //             ticketId={ticketId}
+  //             onSuccess={handlePaymentSuccess}
+  //             onError={handlePaymentError}
+  //           />
+  //         )}
+  //       </CardContent>
+  //     </Card>
+
+  //     <div className="flex justify-between">
+  //       <Button
+  //         variant="outline"
+  //         onClick={() => setCurrentStep('promotions')}
+  //       >
+  //         <ArrowLeft className="mr-2 h-4 w-4" />
+  //         Back
+  //       </Button>
+  //     </div>
+  //   </div>
+  // )
+
+const renderPaymentStep = () => {
+  console.log("Rendering Payment Step. Booking Summary:", bookingSummary, "Ticket ID:", ticketId);
+  return (
     <div className="space-y-6">
       <Card className="bg-gray-800 border-gray-700">
         <CardHeader>
@@ -465,14 +515,19 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {bookingSummary && ticketId && (
-            <StripePaymentForm
-              amount={bookingSummary.total}
-              currency="LKR"
+          {bookingSummary && ticketId ? (
+            <PaymentWrapper
               ticketId={ticketId}
-              onSuccess={handlePaymentSuccess}
-              onError={handlePaymentError}
+              totalAmount={bookingSummary.total}
+              eventTitle={event.title}
+              onPaymentSuccess={handlePaymentSuccess} // Keep for internal state if needed
+              onPaymentError={handlePaymentError} // Keep for internal state if needed
             />
+          ) : (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>Booking summary or ticket ID is missing. Cannot proceed to payment.</AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>
@@ -488,7 +543,7 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
       </div>
     </div>
   )
-
+}
   const renderConfirmationStep = () => (
     <div className="text-center space-y-6">
       <div className="flex justify-center">

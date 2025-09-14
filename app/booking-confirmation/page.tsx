@@ -5,8 +5,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Download, Calendar, MapPin, Mail, Smartphone } from "lucide-react"
+import { useSearchParams } from 'next/navigation';
+import { useTicketQRCode } from '@/hooks/useTickets';
 
 export default function BookingConfirmationPage() {
+  const searchParams = useSearchParams();
+  let ticketId = searchParams.get('ticketId');
+  console.log("BookingConfirmationPage - Initial ticketId from URL:", ticketId);
+  
+  // Fallback to localStorage if ticketId is not in URL
+  if (!ticketId && typeof window !== 'undefined') {
+    console.log("BookingConfirmationPage - ticketId not in URL, checking localStorage.");
+    ticketId = localStorage.getItem('currentBookingTicketId');
+    console.log("BookingConfirmationPage - ticketId from localStorage:", ticketId);
+    // Clear from localStorage after retrieval to prevent stale data
+    localStorage.removeItem('currentBookingTicketId');
+  }
+  const { qrCodeUrl, generateQRCode, loading, error } = useTicketQRCode();
+
   // Mock booking data - in real app this would come from the booking API
   const bookingId = "SE-" + Math.random().toString(36).substr(2, 9).toUpperCase()
   const bookingDate = new Date().toLocaleDateString()
@@ -40,7 +56,7 @@ export default function BookingConfirmationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-400">Booking ID</p>
-                  <p className="text-white font-mono">{bookingId}</p>
+                  <p className="text-white font-mono">{ticketId || bookingId}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-400">Booking Date</p>
@@ -95,9 +111,28 @@ export default function BookingConfirmationPage() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button className="flex-1 bg-purple-600 hover:bg-purple-700">
-              <Download className="h-4 w-4 mr-2" />
-              Download Tickets
+            <Button 
+              className="flex-1 bg-purple-600 hover:bg-purple-700"
+              onClick={async () => {
+                if (ticketId) {
+                  const url = await generateQRCode(ticketId);
+                  if (url) {
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `ticket-qrcode-${ticketId}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                } else {
+                  console.error("Ticket ID not available for QR code generation.");
+                  // Optionally, display a user-friendly error message
+                }
+              }}
+              disabled={!ticketId || loading}
+            >
+              {loading ? 'Generating QR...' : 'Download Tickets'}
+              <Download className="h-4 w-4 ml-2" />
             </Button>
             <Link href="/my-tickets" className="flex-1">
               <Button
