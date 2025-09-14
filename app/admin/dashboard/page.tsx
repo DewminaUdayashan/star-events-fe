@@ -24,7 +24,7 @@ import {
 
 export default function AdminDashboard() {
   return (
-    <ProtectedRoute requiredRole="Admin">
+    <ProtectedRoute requiredRole={["Admin", "Organizer"]}>
       <div className="min-h-screen bg-gray-900">
         <Navigation />
 
