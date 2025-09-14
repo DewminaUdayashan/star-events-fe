@@ -1,24 +1,24 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useAuth } from "@/contexts/AuthContext"
-import { useRouter } from "next/navigation"
-import LoginForm from "@/components/auth/LoginForm"
-import { Loader2 } from "lucide-react"
+import { useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import LoginForm from "@/components/auth/LoginForm";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-  const { user, loading } = useAuth()
-  const router = useRouter()
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     // Redirect if already logged in
-    if (!loading && user) {
-      router.push("/")
+    if (!isLoading && user) {
+      router.push("/");
     }
-  }, [user, loading, router])
+  }, [user, isLoading, router]);
 
   // Show loading while checking auth state
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="flex items-center space-x-2">
@@ -26,12 +26,12 @@ export default function LoginPage() {
           <span className="text-white">Loading...</span>
         </div>
       </div>
-    )
+    );
   }
 
   // Don't render form if user is already logged in
   if (user) {
-    return null
+    return null;
   }
 
   return (
@@ -44,5 +44,5 @@ export default function LoginPage() {
         <LoginForm />
       </div>
     </div>
-  )
+  );
 }

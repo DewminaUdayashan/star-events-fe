@@ -1,5 +1,7 @@
 // API Types based on OpenAPI specification
 
+import { UserRole } from "../config";
+
 export interface ApplicationUser {
   id: string;
   userName?: string;
@@ -106,7 +108,7 @@ export interface LoginResponse {
   message?: string;
   token: string;
   user: ApplicationUser;
-  roles?: string[];
+  roles?: UserRole[];
   expiresAt: string;
 }
 

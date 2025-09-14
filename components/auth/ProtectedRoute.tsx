@@ -1,55 +1,56 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useAuth } from "@/contexts/AuthContext"
-import { useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
+import { useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { UserRole } from "@/types/auth";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode
-  requiredRole?: "admin" | "organizer" | "customer"
-  fallbackPath?: string
+  children: React.ReactNode;
+  requiredRole?: UserRole;
+  fallbackPath?: string;
 }
 
-export default function ProtectedRoute({ 
-  children, 
-  requiredRole, 
-  fallbackPath = "/login" 
+export default function ProtectedRoute({
+  children,
+  requiredRole,
+  fallbackPath = "/login",
 }: ProtectedRouteProps) {
-  const { user, loading, isAuthenticated } = useAuth()
-  const router = useRouter()
+  const { user, isLoading, isAuthenticated, roles } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
+    if (!isLoading) {
       // Check if user is authenticated
       if (!isAuthenticated) {
-        router.push(fallbackPath)
-        return
+        router.push(fallbackPath);
+        return;
       }
 
       // Check role if required
-      if (requiredRole && user?.role !== requiredRole) {
+      if (requiredRole && roles.length > 0 && !roles.includes(requiredRole)) {
         // Redirect based on user role
-        switch (user?.role) {
-          case "admin":
-            router.push("/admin/dashboard")
-            break
-          case "organizer":
-            router.push("/organizer/dashboard")
-            break
-          case "customer":
-            router.push("/")
-            break
+        switch (roles[0]) {
+          case "Admin":
+            router.push("/admin/dashboard");
+            break;
+          case "Organizer":
+            router.push("/organizer/dashboard");
+            break;
+          case "Customer":
+            router.push("/");
+            break;
           default:
-            router.push("/")
+            router.push("/");
         }
-        return
+        return;
       }
     }
-  }, [user, loading, isAuthenticated, requiredRole, fallbackPath, router])
+  }, [user, isLoading, isAuthenticated, requiredRole, fallbackPath, router]);
 
   // Show loading while checking auth state
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="flex items-center space-x-2">
@@ -57,13 +58,16 @@ export default function ProtectedRoute({
           <span className="text-white">Loading...</span>
         </div>
       </div>
-    )
+    );
   }
 
   // Don't render children if not authenticated or wrong role
-  if (!isAuthenticated || (requiredRole && user?.role !== requiredRole)) {
-    return null
+  if (
+    !isAuthenticated ||
+    (requiredRole && roles.length > 0 && !roles.includes(requiredRole))
+  ) {
+    return null;
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }
