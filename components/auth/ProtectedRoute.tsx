@@ -14,7 +14,7 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ 
   children, 
   requiredRole, 
-  fallbackPath = "/auth/login" 
+  fallbackPath = "/login" 
 }: ProtectedRouteProps) {
   const { user, loading, isAuthenticated } = useAuth()
   const router = useRouter()

@@ -31,7 +31,7 @@ export default function Navbar({ user: propUser, cartItemCount = 0 }: NavbarProp
   const [isSearchOpen, setIsSearchOpen] = useState(false)
 
   // Use auth user if available, otherwise use prop user
-  const user = authUser || null
+  const user = authUser || propUser
 
   const navigationItems = [
     { href: "/", label: "Home" },

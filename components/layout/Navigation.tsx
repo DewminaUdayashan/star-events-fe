@@ -169,12 +169,12 @@ export function Navigation({ className }: NavigationProps) {
               <UserMenu user={user} />
             ) : (
               <div className="flex items-center space-x-2">
-                <Link href="/auth/login">
+                <Link href="/login">
                   <Button variant="ghost" size="sm">
                     Sign In
                   </Button>
                 </Link>
-                <Link href="/auth/register">
+                <Link href="/register">
                   <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
                     Sign Up
                   </Button>
@@ -272,12 +272,12 @@ export function Navigation({ className }: NavigationProps) {
                   {/* Guest user items */}
                   {!user && (
                     <div className="border-t border-gray-700 pt-4 space-y-2">
-                      <Link href="/auth/login" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
                         <Button variant="outline" className="w-full">
                           Sign In
                         </Button>
                       </Link>
-                      <Link href="/auth/register" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
                         <Button className="w-full bg-purple-600 hover:bg-purple-700">
                           Sign Up
                         </Button>
