@@ -1,46 +1,62 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Mail, Lock, Star, ArrowLeft } from "lucide-react"
-import { useAuth } from "@/contexts/AuthContext"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Mail, Lock, Star, ArrowLeft } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const { login } = useAuth()
-  const router = useRouter()
+  const { login, isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.push("/");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
-      await login({ email, password })
-      router.push("/")
+      await login({ email, password });
+      router.push("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed")
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Back to Home */}
-        <Link href="/" className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors">
+        <Link
+          href="/"
+          className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors"
+        >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Home
         </Link>
@@ -66,12 +82,17 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <Alert className="border-red-500 bg-red-500/10 rounded-2xl">
-                  <AlertDescription className="text-red-400">{error}</AlertDescription>
+                  <AlertDescription className="text-red-400">
+                    {error}
+                  </AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-gray-300">
+                <label
+                  htmlFor="email"
+                  className="text-sm font-medium text-gray-300"
+                >
                   Email Address
                 </label>
                 <div className="relative">
@@ -89,7 +110,10 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium text-gray-300">
+                <label
+                  htmlFor="password"
+                  className="text-sm font-medium text-gray-300"
+                >
                   Password
                 </label>
                 <div className="relative">
@@ -115,7 +139,11 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 rounded-2xl" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full bg-purple-600 hover:bg-purple-700 rounded-2xl"
+                disabled={loading}
+              >
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -130,7 +158,10 @@ export default function LoginPage() {
             <div className="mt-6 text-center">
               <p className="text-gray-400">
                 Don't have an account?{" "}
-                <Link href="/register" className="text-purple-400 hover:text-purple-300 transition-colors">
+                <Link
+                  href="/register"
+                  className="text-purple-400 hover:text-purple-300 transition-colors"
+                >
                   Sign up here
                 </Link>
               </p>
@@ -140,14 +171,20 @@ export default function LoginPage() {
             <div className="mt-6 p-4 bg-gray-900 rounded-2xl border border-gray-700">
               <p className="text-xs text-gray-400 mb-2">Demo Credentials:</p>
               <div className="space-y-1 text-xs">
-                <p className="text-gray-300">Customer: john@example.com / password123</p>
-                <p className="text-gray-300">Organizer: organizer@example.com / password123</p>
-                <p className="text-gray-300">Admin: admin@starevents.lk / password123</p>
+                <p className="text-gray-300">
+                  Customer: john@example.com / password123
+                </p>
+                <p className="text-gray-300">
+                  Organizer: organizer@example.com / password123
+                </p>
+                <p className="text-gray-300">
+                  Admin: admin@starevents.lk / password123
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }
