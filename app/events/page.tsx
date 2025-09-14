@@ -1,99 +1,114 @@
-"use client"
+"use client";
 
-import { useState, useMemo, useEffect } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, MapPin, Users, Search, Filter, TrendingUp, Loader2 } from "lucide-react"
-import { eventsService } from "@/lib/services"
-import type { Event, EventFilters } from "@/lib/types/api"
+import { useState, useMemo, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Calendar,
+  MapPin,
+  Users,
+  Search,
+  Filter,
+  TrendingUp,
+  Loader2,
+  CalendarDays,
+} from "lucide-react";
+import { useEvents } from "@/lib/services";
+import type { EventFilters } from "@/lib/types/api";
 
 export default function EventsPage() {
-  const [events, setEvents] = useState<Event[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [selectedLocation, setSelectedLocation] = useState("all")
-  const [sortBy, setSortBy] = useState("date")
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedVenue, setSelectedVenue] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [sortBy, setSortBy] = useState("date");
 
+  // Set default fromDate to today to show only upcoming events
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        setLoading(true)
-        const filters: EventFilters = {}
+    const today = new Date().toISOString().split("T")[0];
+    setFromDate(today);
+  }, []);
 
-        if (searchQuery) filters.keyword = searchQuery
-        if (selectedCategory !== "all") filters.category = selectedCategory
-        if (selectedLocation !== "all") filters.venue = selectedLocation
+  // Prepare filters for the query
+  const filters = useMemo<EventFilters>(() => {
+    const f: EventFilters = {};
+    if (searchQuery.trim()) f.keyword = searchQuery.trim();
+    if (selectedVenue !== "all") f.venue = selectedVenue;
+    if (fromDate) f.fromDate = fromDate;
+    if (toDate) f.toDate = toDate;
+    return f;
+  }, [searchQuery, selectedVenue, fromDate, toDate]);
 
-        const fetchedEvents = await eventsService.getEvents(filters)
-        setEvents(fetchedEvents)
-      } catch (err) {
-        setError("Failed to load events")
-        console.error("Error fetching events:", err)
-      } finally {
-        setLoading(false)
-      }
-    }
+  // Use TanStack Query to fetch events
+  const { data: events = [], isLoading: loading, error } = useEvents(filters);
 
-    fetchEvents()
-  }, [searchQuery, selectedCategory, selectedLocation])
-
-  // Get unique locations and categories from events
-  const locations = useMemo(() => {
-    const uniqueLocations = [...new Set(events.map((event) => event.venue?.location).filter(Boolean))]
-    return uniqueLocations
-  }, [events])
-
-  const categories = useMemo(() => {
-    const uniqueCategories = [...new Set(events.map((event) => event.category).filter(Boolean))]
-    return uniqueCategories
-  }, [events])
+  // Get unique venues from events
+  const venues = useMemo(() => {
+    const uniqueVenues = [
+      ...new Set(
+        events.map((event) => event.venue?.name).filter(Boolean) as string[]
+      ),
+    ];
+    return uniqueVenues;
+  }, [events]);
 
   // Sort events
   const sortedEvents = useMemo(() => {
-    const eventsCopy = [...events]
+    const eventsCopy = [...events];
 
     switch (sortBy) {
       case "date":
-        eventsCopy.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime())
-        break
+        eventsCopy.sort(
+          (a, b) =>
+            new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime()
+        );
+        break;
       case "price-low":
         eventsCopy.sort((a, b) => {
-          const aPrice = a.prices?.[0]?.price || 0
-          const bPrice = b.prices?.[0]?.price || 0
-          return aPrice - bPrice
-        })
-        break
+          const aPrice = a.prices?.[0]?.price || 0;
+          const bPrice = b.prices?.[0]?.price || 0;
+          return aPrice - bPrice;
+        });
+        break;
       case "price-high":
         eventsCopy.sort((a, b) => {
-          const aPrice = a.prices?.[0]?.price || 0
-          const bPrice = b.prices?.[0]?.price || 0
-          return bPrice - aPrice
-        })
-        break
+          const aPrice = a.prices?.[0]?.price || 0;
+          const bPrice = b.prices?.[0]?.price || 0;
+          return bPrice - aPrice;
+        });
+        break;
       case "popularity":
-        eventsCopy.sort((a, b) => (b.isPublished ? 1 : 0) - (a.isPublished ? 1 : 0))
-        break
+        eventsCopy.sort(
+          (a, b) => (b.isPublished ? 1 : 0) - (a.isPublished ? 1 : 0)
+        );
+        break;
     }
 
-    return eventsCopy
-  }, [events, sortBy])
+    return eventsCopy;
+  }, [events, sortBy]);
 
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Header */}
       <div className="bg-gray-800 border-b border-gray-700">
         <div className="container mx-auto px-4 py-8">
-          <h1 className="text-3xl lg:text-4xl font-bold text-white mb-4">Discover Events</h1>
+          <h1 className="text-3xl lg:text-4xl font-bold text-white mb-4">
+            Discover Events
+          </h1>
           <p className="text-gray-400 max-w-2xl">
-            Find amazing events happening around Sri Lanka. From concerts to cultural shows, discover your next
-            unforgettable experience.
+            Find amazing events happening around Sri Lanka. From concerts to
+            cultural shows, discover your next unforgettable experience.
           </p>
         </div>
       </div>
@@ -101,7 +116,7 @@ export default function EventsPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Search and Filters */}
         <div className="bg-gray-800 rounded-3xl p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             {/* Search Input */}
             <div className="lg:col-span-2 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -113,31 +128,40 @@ export default function EventsPage() {
               />
             </div>
 
-            {/* Category Filter */}
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="bg-gray-700 border-gray-600 text-white rounded-2xl">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-800 border-gray-600 rounded-2xl">
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* From Date Filter */}
+            <div className="relative">
+              <CalendarDays className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                type="date"
+                placeholder="From Date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400 rounded-2xl"
+              />
+            </div>
 
-            {/* Location Filter */}
-            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+            {/* To Date Filter */}
+            <div className="relative">
+              <CalendarDays className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                type="date"
+                placeholder="To Date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400 rounded-2xl"
+              />
+            </div>
+
+            {/* Venue Filter */}
+            <Select value={selectedVenue} onValueChange={setSelectedVenue}>
               <SelectTrigger className="bg-gray-700 border-gray-600 text-white rounded-2xl">
-                <SelectValue placeholder="Location" />
+                <SelectValue placeholder="Venue" />
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-600 rounded-2xl">
-                <SelectItem value="all">All Locations</SelectItem>
-                {locations.map((location) => (
-                  <SelectItem key={location} value={location}>
-                    {location}
+                <SelectItem value="all">All Venues</SelectItem>
+                {venues.map((venue) => (
+                  <SelectItem key={venue} value={venue}>
+                    {venue}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -156,6 +180,42 @@ export default function EventsPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Active Filters Display */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {searchQuery && (
+              <Badge
+                variant="secondary"
+                className="bg-purple-600/20 text-purple-300 border-purple-500/30"
+              >
+                Search: "{searchQuery}"
+              </Badge>
+            )}
+            {fromDate && (
+              <Badge
+                variant="secondary"
+                className="bg-purple-600/20 text-purple-300 border-purple-500/30"
+              >
+                From: {new Date(fromDate).toLocaleDateString()}
+              </Badge>
+            )}
+            {toDate && (
+              <Badge
+                variant="secondary"
+                className="bg-purple-600/20 text-purple-300 border-purple-500/30"
+              >
+                To: {new Date(toDate).toLocaleDateString()}
+              </Badge>
+            )}
+            {selectedVenue !== "all" && (
+              <Badge
+                variant="secondary"
+                className="bg-purple-600/20 text-purple-300 border-purple-500/30"
+              >
+                Venue: {selectedVenue}
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* Results Header */}
@@ -163,7 +223,11 @@ export default function EventsPage() {
           <div className="flex items-center space-x-2">
             <Filter className="h-5 w-5 text-gray-400" />
             <span className="text-gray-400">
-              {loading ? "Loading..." : `${sortedEvents.length} event${sortedEvents.length !== 1 ? "s" : ""} found`}
+              {loading
+                ? "Loading..."
+                : `${sortedEvents.length} event${
+                    sortedEvents.length !== 1 ? "s" : ""
+                  } found`}
             </span>
           </div>
         </div>
@@ -180,10 +244,18 @@ export default function EventsPage() {
         {error && (
           <div className="text-center py-12">
             <div className="text-red-400 mb-4">
-              <h3 className="text-xl font-semibold mb-2">Error Loading Events</h3>
-              <p>{error}</p>
+              <h3 className="text-xl font-semibold mb-2">
+                Error Loading Events
+              </h3>
+              <p>
+                {error.message ||
+                  "Failed to load events. Please check if the API server is running on localhost:5000"}
+              </p>
             </div>
-            <Button onClick={() => window.location.reload()} className="bg-purple-600 hover:bg-purple-700 rounded-2xl">
+            <Button
+              onClick={() => window.location.reload()}
+              className="bg-purple-600 hover:bg-purple-700 rounded-2xl"
+            >
               Try Again
             </Button>
           </div>
@@ -199,7 +271,10 @@ export default function EventsPage() {
               >
                 <div className="relative h-48 overflow-hidden">
                   <Image
-                    src={event.image || "/placeholder.svg?height=200&width=400&query=event"}
+                    src={
+                      event.image ||
+                      "/placeholder.svg?height=200&width=400&query=event"
+                    }
                     alt={event.title || "Event"}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -219,7 +294,9 @@ export default function EventsPage() {
                     <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-purple-400 transition-colors">
                       {event.title}
                     </h3>
-                    <p className="text-gray-400 text-sm line-clamp-2">{event.description}</p>
+                    <p className="text-gray-400 text-sm line-clamp-2">
+                      {event.description}
+                    </p>
                   </div>
 
                   <div className="space-y-2 mb-4">
@@ -227,7 +304,10 @@ export default function EventsPage() {
                       <Calendar className="h-4 w-4 mr-2" />
                       <span>
                         {new Date(event.eventDate).toLocaleDateString()} at{" "}
-                        {new Date(event.eventTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(event.eventTime).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </div>
                     <div className="flex items-center text-gray-400 text-sm">
@@ -245,11 +325,16 @@ export default function EventsPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <span className="text-white font-semibold text-lg">
-                        {event.prices?.[0] ? `Rs. ${event.prices[0].price.toLocaleString()}` : "Free"}
+                        {event.prices?.[0]
+                          ? `Rs. ${event.prices[0].price.toLocaleString()}`
+                          : "Free"}
                       </span>
                     </div>
                     <Link href={`/events/${event.id}`}>
-                      <Button size="sm" className="bg-purple-600 hover:bg-purple-700 rounded-2xl">
+                      <Button
+                        size="sm"
+                        className="bg-purple-600 hover:bg-purple-700 rounded-2xl"
+                      >
                         View Details
                       </Button>
                     </Link>
@@ -270,9 +355,10 @@ export default function EventsPage() {
             </div>
             <Button
               onClick={() => {
-                setSearchQuery("")
-                setSelectedCategory("all")
-                setSelectedLocation("all")
+                setSearchQuery("");
+                setSelectedVenue("all");
+                setFromDate(new Date().toISOString().split("T")[0]); // Reset to today
+                setToDate("");
               }}
               variant="outline"
               className="border-purple-500 text-purple-400 hover:bg-purple-600 hover:text-white rounded-2xl"
@@ -283,5 +369,5 @@ export default function EventsPage() {
         )}
       </div>
     </div>
-  )
+  );
 }
