@@ -1,30 +1,38 @@
-"use client"
+"use client";
 
-import { Navigation } from "@/components/layout/Navigation"
-import ProtectedRoute from "@/components/auth/ProtectedRoute"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { 
-  Users, 
-  Calendar, 
-  Ticket, 
-  DollarSign, 
-  TrendingUp, 
+import { Navigation } from "@/components/layout/Navigation";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Users,
+  Calendar,
+  Ticket,
+  DollarSign,
+  TrendingUp,
   AlertTriangle,
   Shield,
-  BarChart3
-} from "lucide-react"
+  BarChart3,
+} from "lucide-react";
 
 export default function AdminDashboard() {
   return (
-    <ProtectedRoute requiredRole="admin">
+    <ProtectedRoute requiredRole="Admin">
       <div className="min-h-screen bg-gray-900">
         <Navigation />
-        
+
         <main className="max-w-7xl mx-auto px-4 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Admin Dashboard
+            </h1>
             <p className="text-gray-400">Manage the StarEvents platform</p>
           </div>
 
@@ -35,7 +43,9 @@ export default function AdminDashboard() {
                 <div className="flex items-center">
                   <Users className="h-8 w-8 text-blue-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-400">Total Users</p>
+                    <p className="text-sm font-medium text-gray-400">
+                      Total Users
+                    </p>
                     <p className="text-2xl font-bold text-white">1,234</p>
                   </div>
                 </div>
@@ -47,7 +57,9 @@ export default function AdminDashboard() {
                 <div className="flex items-center">
                   <Calendar className="h-8 w-8 text-green-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-400">Active Events</p>
+                    <p className="text-sm font-medium text-gray-400">
+                      Active Events
+                    </p>
                     <p className="text-2xl font-bold text-white">89</p>
                   </div>
                 </div>
@@ -59,7 +71,9 @@ export default function AdminDashboard() {
                 <div className="flex items-center">
                   <Ticket className="h-8 w-8 text-purple-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-400">Tickets Sold</p>
+                    <p className="text-sm font-medium text-gray-400">
+                      Tickets Sold
+                    </p>
                     <p className="text-2xl font-bold text-white">5,678</p>
                   </div>
                 </div>
@@ -97,7 +111,9 @@ export default function AdminDashboard() {
                   <div className="flex items-center space-x-3 p-3 bg-gray-700 rounded-lg">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <div className="flex-1">
-                      <p className="text-white text-sm">New event "Summer Music Festival" created</p>
+                      <p className="text-white text-sm">
+                        New event "Summer Music Festival" created
+                      </p>
                       <p className="text-gray-400 text-xs">2 hours ago</p>
                     </div>
                     <Badge variant="outline">Event</Badge>
@@ -105,7 +121,9 @@ export default function AdminDashboard() {
                   <div className="flex items-center space-x-3 p-3 bg-gray-700 rounded-lg">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     <div className="flex-1">
-                      <p className="text-white text-sm">User "john.doe@example.com" registered</p>
+                      <p className="text-white text-sm">
+                        User "john.doe@example.com" registered
+                      </p>
                       <p className="text-gray-400 text-xs">4 hours ago</p>
                     </div>
                     <Badge variant="outline">User</Badge>
@@ -113,7 +131,9 @@ export default function AdminDashboard() {
                   <div className="flex items-center space-x-3 p-3 bg-gray-700 rounded-lg">
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     <div className="flex-1">
-                      <p className="text-white text-sm">50 tickets sold for "Tech Conference 2024"</p>
+                      <p className="text-white text-sm">
+                        50 tickets sold for "Tech Conference 2024"
+                      </p>
                       <p className="text-gray-400 text-xs">6 hours ago</p>
                     </div>
                     <Badge variant="outline">Sales</Badge>
@@ -185,5 +205,5 @@ export default function AdminDashboard() {
         </main>
       </div>
     </ProtectedRoute>
-  )
+  );
 }

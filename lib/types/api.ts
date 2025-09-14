@@ -1,5 +1,7 @@
 // API Types based on OpenAPI specification
 
+import { UserRole } from "../config";
+
 export interface ApplicationUser {
   id: string;
   userName?: string;
@@ -87,41 +89,27 @@ export interface Ticket {
 }
 
 // Request/Response Types
-export interface RegisterRequestWrapper {
-  request: RegisterRequest;
-}
-
 export interface RegisterRequest {
-  email: string;
-  password: string;
-  fullName: string;
-  address: string;
-  dateOfBirth: string;
-  organizationName?: string | null | undefined;
-  organizationContact?: string | null | undefined;
-}
-
-export interface RegisterResponse {
-  message: string;
-  data: {
-    user: ApplicationUser & { assignedRole: string };
-    token: string;
-    roles: string[];
-  };
-  statusCode: number;
+  email?: string;
+  password?: string;
+  fullName?: string;
+  address?: string;
+  dateOfBirth?: string;
+  organizationName?: string;
+  organizationContact?: string;
 }
 
 export interface LoginRequest {
-  email: string;
-  password: string;
+  email?: string;
+  password?: string;
 }
 
 export interface LoginResponse {
-  message: string;
+  message?: string;
   token: string;
   user: ApplicationUser;
-  roles: string[];
-  statusCode: number;
+  roles?: UserRole[];
+  expiresAt: string;
 }
 
 export interface BookTicketRequest {

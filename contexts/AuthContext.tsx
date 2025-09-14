@@ -116,8 +116,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials
       )) as LoginResponse & { roles?: UserRole[] };
 
-      console.log("Login successful:", response);
-
       // Extract roles from response or default to Customer
       const roles: UserRole[] = response.roles || ["Customer"];
 
