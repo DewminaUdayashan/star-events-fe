@@ -147,12 +147,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (data: RegisterRequest) => {
     try {
-      const response = await authService.register({
+      const response = (await authService.register({
         request: data,
-      } as RegisterRequestWrapper) as RegisterResponse;
+      } as RegisterRequestWrapper)) as RegisterResponse;
 
       // Extract roles from response or default to Customer
-      const roles: UserRole[] = response.data.roles as UserRole[] || ["Customer"];
+      const roles: UserRole[] = (response.data.roles as UserRole[]) || [
+        "Customer",
+      ];
 
       // Store everything in localStorage
       if (typeof window !== "undefined") {
@@ -172,7 +174,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       console.error("Registration failed:", error);
       setAuthState((prev) => ({ ...prev, isLoading: false }));
-      const errorMessage = error.response?.data?.message || error.message || "Registration failed";
+      const errorMessage =
+        error.response?.data?.message || error.message || "Registration failed";
       throw new Error(errorMessage);
     }
   };
