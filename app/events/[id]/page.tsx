@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
+import { useState } from "react";
+import { useParams } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   Calendar,
   MapPin,
@@ -21,43 +21,25 @@ import {
   Plus,
   Minus,
   Loader2,
-} from "lucide-react"
-import { eventsService, ticketsService } from "@/lib/services"
-import { useCart } from "@/contexts/CartContext"
-import { useAuth } from "@/contexts/AuthContext"
-import type { Event, EventPrice, BookTicketRequest } from "@/lib/types/api"
+} from "lucide-react";
+import { useEvent, ticketsService } from "@/lib/services";
+import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
+import type { EventPrice, BookTicketRequest } from "@/lib/types/api";
 
 export default function EventDetailsPage() {
-  const params = useParams()
-  const eventId = params.id as string
-  const { addItem } = useCart()
-  const { user } = useAuth()
+  const params = useParams();
+  const eventId = params.id as string;
+  const { addItem } = useCart();
+  const { user } = useAuth();
 
-  const [event, setEvent] = useState<Event | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-  const [selectedTickets, setSelectedTickets] = useState<Record<string, number>>({})
-  const [isLiked, setIsLiked] = useState(false)
-  const [bookingLoading, setBookingLoading] = useState(false)
+  const { data: event, isLoading: loading, error } = useEvent(eventId);
 
-  useEffect(() => {
-    const fetchEvent = async () => {
-      try {
-        setLoading(true)
-        const fetchedEvent = await eventsService.getEventById(eventId)
-        setEvent(fetchedEvent)
-      } catch (err) {
-        setError("Failed to load event details")
-        console.error("Error fetching event:", err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (eventId) {
-      fetchEvent()
-    }
-  }, [eventId])
+  const [selectedTickets, setSelectedTickets] = useState<
+    Record<string, number>
+  >({});
+  const [isLiked, setIsLiked] = useState(false);
+  const [bookingLoading, setBookingLoading] = useState(false);
 
   if (loading) {
     return (
@@ -67,60 +49,75 @@ export default function EventDetailsPage() {
           <p className="text-gray-400">Loading event details...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error || !event) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Event Not Found</h1>
-          <p className="text-gray-400 mb-6">{error || "The event you're looking for doesn't exist."}</p>
+          <h1 className="text-2xl font-bold text-white mb-4">
+            Event Not Found
+          </h1>
+          <p className="text-gray-400 mb-6">
+            {error?.message || "The event you're looking for doesn't exist."}
+          </p>
           <Link href="/events">
-            <Button className="bg-purple-600 hover:bg-purple-700 rounded-2xl">Browse All Events</Button>
+            <Button className="bg-purple-600 hover:bg-purple-700 rounded-2xl">
+              Browse All Events
+            </Button>
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
   const updateTicketQuantity = (priceId: string, change: number) => {
-    const price = event.prices?.find((p) => p.id === priceId)
-    if (!price) return
+    const price = event.prices?.find((p) => p.id === priceId);
+    if (!price) return;
 
-    const currentQuantity = selectedTickets[priceId] || 0
-    const newQuantity = Math.max(0, Math.min(price.stock, currentQuantity + change))
+    const currentQuantity = selectedTickets[priceId] || 0;
+    const newQuantity = Math.max(
+      0,
+      Math.min(price.stock, currentQuantity + change)
+    );
 
     setSelectedTickets((prev) => ({
       ...prev,
       [priceId]: newQuantity,
-    }))
-  }
+    }));
+  };
 
   const getTotalAmount = () => {
-    return Object.entries(selectedTickets).reduce((total, [priceId, quantity]) => {
-      const price = event.prices?.find((p) => p.id === priceId)
-      return total + (price ? price.price * quantity : 0)
-    }, 0)
-  }
+    return Object.entries(selectedTickets).reduce(
+      (total, [priceId, quantity]) => {
+        const price = event.prices?.find((p) => p.id === priceId);
+        return total + (price ? price.price * quantity : 0);
+      },
+      0
+    );
+  };
 
   const getTotalTickets = () => {
-    return Object.values(selectedTickets).reduce((total, quantity) => total + quantity, 0)
-  }
+    return Object.values(selectedTickets).reduce(
+      (total, quantity) => total + quantity,
+      0
+    );
+  };
 
   const handleBookTickets = async () => {
     if (!user) {
-      alert("Please login to book tickets")
-      return
+      alert("Please login to book tickets");
+      return;
     }
 
     if (getTotalTickets() === 0) {
-      alert("Please select at least one ticket")
-      return
+      alert("Please select at least one ticket");
+      return;
     }
 
     try {
-      setBookingLoading(true)
+      setBookingLoading(true);
 
       // Book each ticket type separately
       for (const [priceId, quantity] of Object.entries(selectedTickets)) {
@@ -130,29 +127,32 @@ export default function EventDetailsPage() {
             eventPriceId: priceId,
             quantity,
             useLoyaltyPoints: false,
-          }
+          };
 
-          await ticketsService.bookTicket(bookingRequest)
+          await ticketsService.bookTicket(bookingRequest);
         }
       }
 
       // Reset selected tickets after successful booking
-      setSelectedTickets({})
-      alert("Tickets booked successfully!")
+      setSelectedTickets({});
+      alert("Tickets booked successfully!");
     } catch (err) {
-      console.error("Booking error:", err)
-      alert("Failed to book tickets. Please try again.")
+      console.error("Booking error:", err);
+      alert("Failed to book tickets. Please try again.");
     } finally {
-      setBookingLoading(false)
+      setBookingLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Back Button */}
       <div className="container mx-auto px-4 py-4">
         <Link href="/events">
-          <Button variant="ghost" className="text-gray-400 hover:text-white rounded-2xl">
+          <Button
+            variant="ghost"
+            className="text-gray-400 hover:text-white rounded-2xl"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Events
           </Button>
@@ -162,7 +162,10 @@ export default function EventDetailsPage() {
       {/* Hero Section */}
       <div className="relative h-96 overflow-hidden">
         <Image
-          src={event.image || "/placeholder.svg?height=400&width=800&query=event hero"}
+          src={
+            event.image ||
+            "/placeholder.svg?height=400&width=800&query=event hero"
+          }
           alt={event.title || "Event"}
           fill
           className="object-cover"
@@ -180,20 +183,32 @@ export default function EventDetailsPage() {
                     </Badge>
                   )}
                   {event.category && (
-                    <Badge className="bg-blue-600 hover:bg-blue-700 rounded-2xl">{event.category}</Badge>
+                    <Badge className="bg-blue-600 hover:bg-blue-700 rounded-2xl">
+                      {event.category}
+                    </Badge>
                   )}
                 </div>
-                <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">{event.title}</h1>
-                <p className="text-xl text-gray-200 max-w-2xl">{event.description}</p>
+                <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
+                  {event.title}
+                </h1>
+                <p className="text-xl text-gray-200 max-w-2xl">
+                  {event.description}
+                </p>
               </div>
               <div className="flex space-x-2">
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => setIsLiked(!isLiked)}
-                  className={`border-gray-600 rounded-2xl ${isLiked ? "bg-red-600 text-white" : "text-gray-400 hover:text-white"}`}
+                  className={`border-gray-600 rounded-2xl ${
+                    isLiked
+                      ? "bg-red-600 text-white"
+                      : "text-gray-400 hover:text-white"
+                  }`}
                 >
-                  <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
+                  <Heart
+                    className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`}
+                  />
                 </Button>
                 <Button
                   variant="outline"
@@ -232,7 +247,10 @@ export default function EventDetailsPage() {
                         })}
                       </p>
                       <p className="text-gray-400">
-                        {new Date(event.eventTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(event.eventTime).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </p>
                     </div>
                   </div>
@@ -241,7 +259,9 @@ export default function EventDetailsPage() {
                     <MapPin className="h-5 w-5 text-purple-400" />
                     <div>
                       <p className="text-sm text-gray-400">Venue</p>
-                      <p className="text-white font-medium">{event.venue?.name}</p>
+                      <p className="text-white font-medium">
+                        {event.venue?.name}
+                      </p>
                       <p className="text-gray-400">{event.venue?.location}</p>
                     </div>
                   </div>
@@ -250,7 +270,9 @@ export default function EventDetailsPage() {
                     <Users className="h-5 w-5 text-purple-400" />
                     <div>
                       <p className="text-sm text-gray-400">Capacity</p>
-                      <p className="text-white font-medium">{event.venue?.capacity} people</p>
+                      <p className="text-white font-medium">
+                        {event.venue?.capacity} people
+                      </p>
                     </div>
                   </div>
 
@@ -258,7 +280,9 @@ export default function EventDetailsPage() {
                     <User className="h-5 w-5 text-purple-400" />
                     <div>
                       <p className="text-sm text-gray-400">Organizer</p>
-                      <p className="text-white font-medium">{event.organizer?.fullName || "Event Organizer"}</p>
+                      <p className="text-white font-medium">
+                        {event.organizer?.fullName || "Event Organizer"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -266,14 +290,23 @@ export default function EventDetailsPage() {
                 <Separator className="bg-gray-700" />
 
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">About This Event</h3>
-                  <p className="text-gray-300 leading-relaxed">{event.description}</p>
+                  <h3 className="text-lg font-semibold text-white mb-3">
+                    About This Event
+                  </h3>
+                  <p className="text-gray-300 leading-relaxed">
+                    {event.description}
+                  </p>
                 </div>
 
                 {event.category && (
                   <div>
-                    <h3 className="text-lg font-semibold text-white mb-3">Category</h3>
-                    <Badge variant="outline" className="border-gray-600 text-gray-400 rounded-2xl">
+                    <h3 className="text-lg font-semibold text-white mb-3">
+                      Category
+                    </h3>
+                    <Badge
+                      variant="outline"
+                      className="border-gray-600 text-gray-400 rounded-2xl"
+                    >
                       <Tag className="h-3 w-3 mr-1" />
                       {event.category}
                     </Badge>
@@ -292,15 +325,26 @@ export default function EventDetailsPage() {
               <CardContent className="space-y-4">
                 {event.prices && event.prices.length > 0 ? (
                   event.prices.map((price: EventPrice) => (
-                    <div key={price.id} className="border border-gray-700 rounded-2xl p-4">
+                    <div
+                      key={price.id}
+                      className="border border-gray-700 rounded-2xl p-4"
+                    >
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <h4 className="font-semibold text-white">{price.category || "General Admission"}</h4>
-                          <p className="text-sm text-gray-400">Standard ticket</p>
+                          <h4 className="font-semibold text-white">
+                            {price.category || "General Admission"}
+                          </h4>
+                          <p className="text-sm text-gray-400">
+                            Standard ticket
+                          </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-white">Rs. {price.price.toLocaleString()}</p>
-                          <p className="text-xs text-gray-400">{price.stock} left</p>
+                          <p className="font-bold text-white">
+                            Rs. {price.price.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {price.stock} left
+                          </p>
                         </div>
                       </div>
 
@@ -315,13 +359,18 @@ export default function EventDetailsPage() {
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
-                          <span className="w-8 text-center text-white">{selectedTickets[price.id] || 0}</span>
+                          <span className="w-8 text-center text-white">
+                            {selectedTickets[price.id] || 0}
+                          </span>
                           <Button
                             variant="outline"
                             size="icon"
                             className="h-8 w-8 border-gray-600 bg-transparent rounded-xl"
                             onClick={() => updateTicketQuantity(price.id, 1)}
-                            disabled={price.stock === 0 || (selectedTickets[price.id] || 0) >= price.stock}
+                            disabled={
+                              price.stock === 0 ||
+                              (selectedTickets[price.id] || 0) >= price.stock
+                            }
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
@@ -331,7 +380,9 @@ export default function EventDetailsPage() {
                   ))
                 ) : (
                   <div className="text-center py-4">
-                    <p className="text-gray-400">No tickets available for this event</p>
+                    <p className="text-gray-400">
+                      No tickets available for this event
+                    </p>
                   </div>
                 )}
 
@@ -371,5 +422,5 @@ export default function EventDetailsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

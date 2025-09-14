@@ -57,8 +57,6 @@ export const useEvent = (id: string) => {
     queryKey: ["event", id],
     queryFn: () => eventsService.getEventById(id),
     enabled: !!id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 };
 
@@ -66,8 +64,6 @@ export const useTrendingEvents = () => {
   return useQuery({
     queryKey: ["events", "trending"],
     queryFn: () => eventsService.getTrendingEvents(),
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 20 * 60 * 1000, // 20 minutes
   });
 };
 
@@ -75,7 +71,5 @@ export const useFeaturedEvents = () => {
   return useQuery({
     queryKey: ["events", "featured"],
     queryFn: () => eventsService.getFeaturedEvents(),
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 20 * 60 * 1000, // 20 minutes
   });
 };
