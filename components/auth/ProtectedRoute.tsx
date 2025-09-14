@@ -8,9 +8,18 @@ import { UserRole } from "@/types/auth";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: UserRole;
+  requiredRole?: UserRole | UserRole[]; // Single role or array of roles
   fallbackPath?: string;
 }
+
+/**
+ * ProtectedRoute component that guards routes based on authentication and role requirements
+ *
+ * Usage examples:
+ * - Single role: <ProtectedRoute requiredRole="Admin">...</ProtectedRoute>
+ * - Multiple roles: <ProtectedRoute requiredRole={["Admin", "Organizer"]}>...</ProtectedRoute>
+ * - No role requirement: <ProtectedRoute>...</ProtectedRoute> (just authentication)
+ */
 
 export default function ProtectedRoute({
   children,
@@ -19,6 +28,28 @@ export default function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { user, isLoading, isAuthenticated, roles } = useAuth();
   const router = useRouter();
+
+  // Helper function to check if user has required role(s)
+  const hasRequiredRole = (
+    userRoles: UserRole[],
+    required?: UserRole | UserRole[]
+  ): boolean => {
+    if (!required) return true; // No role requirement
+
+    if (Array.isArray(required)) {
+      // Check if user has any of the required roles
+      return required.some((role) => userRoles.includes(role));
+    } else {
+      // Check if user has the single required role
+      return userRoles.includes(required);
+    }
+  };
+
+  console.log("ProtectedRoute - User:", user);
+  console.log("ProtectedRoute - isLoading:", isLoading);
+  console.log("ProtectedRoute - isAuthenticated:", isAuthenticated);
+  console.log("ProtectedRoute - roles:", roles);
+  console.log("ProtectedRoute - requiredRole:", requiredRole);
 
   useEffect(() => {
     if (!isLoading) {
@@ -29,7 +60,11 @@ export default function ProtectedRoute({
       }
 
       // Check role if required
-      if (requiredRole && roles.length > 0 && !roles.includes(requiredRole)) {
+      if (
+        requiredRole &&
+        roles.length > 0 &&
+        !hasRequiredRole(roles, requiredRole)
+      ) {
         // Redirect based on user role
         switch (roles[0]) {
           case "Admin":
@@ -47,7 +82,15 @@ export default function ProtectedRoute({
         return;
       }
     }
-  }, [user, isLoading, isAuthenticated, requiredRole, fallbackPath, router]);
+  }, [
+    user,
+    isLoading,
+    isAuthenticated,
+    requiredRole,
+    fallbackPath,
+    router,
+    roles,
+  ]);
 
   // Show loading while checking auth state
   if (isLoading) {
@@ -64,7 +107,7 @@ export default function ProtectedRoute({
   // Don't render children if not authenticated or wrong role
   if (
     !isAuthenticated ||
-    (requiredRole && roles.length > 0 && !roles.includes(requiredRole))
+    (requiredRole && roles.length > 0 && !hasRequiredRole(roles, requiredRole))
   ) {
     return null;
   }

@@ -14,11 +14,8 @@ import type {
   LoginRequest,
   RegisterRequest,
   LoginResponse,
-  RegisterRequestWrapper,
-  RegisterResponse,
 } from "@/lib/types/api";
-
-export type UserRole = "Admin" | "Organizer" | "Customer";
+import { UserRole } from "@/types/auth";
 
 interface AuthState {
   user: ApplicationUser | null;
@@ -110,14 +107,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (credentials: LoginRequest) => {
     try {
-      console.log("Attempting login with:", credentials.email);
-
-      const response = (await authService.login(
-        credentials
-      )) as LoginResponse & { roles?: UserRole[] };
-
+      const response = await authService.login(credentials);
       // Extract roles from response or default to Customer
       const roles: UserRole[] = response.roles || ["Customer"];
+      console.log("Login response:", response);
+      console.log("Roles:", roles);
+      console.log("User:", response.user);
 
       // Store everything in localStorage
       if (typeof window !== "undefined") {
@@ -147,9 +142,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (data: RegisterRequest) => {
     try {
-      const response = (await authService.register({
+      const response = await authService.register({
         request: data,
-      } as RegisterRequestWrapper)) as RegisterResponse;
+      });
 
       // Extract roles from response or default to Customer
       const roles: UserRole[] = (response.data.roles as UserRole[]) || [
