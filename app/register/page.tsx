@@ -36,23 +36,25 @@ export default function RegisterPage() {
     setLoading(true)
     setError("")
 
-    // Validation
+    // Password match check
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
       setLoading(false)
       return
     }
 
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long")
+    // Password strength validation
+    const passwordRegex = /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{8,}$/
+    if (!passwordRegex.test(formData.password)) {
+      setError("Password must be at least 8 characters and include uppercase, lowercase, and a number")
       setLoading(false)
       return
     }
-    
+
     if (!formData.dateOfBirth) {
-      setError("Date of Birth is required");
-      setLoading(false);
-      return;
+      setError("Date of Birth is required")
+      setLoading(false)
+      return
     }
 
     if (!acceptTerms) {

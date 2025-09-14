@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useEvents } from "@/lib/services";
 import type { EventFilters } from "@/lib/types/api";
+import Navbar from "@/components/Navbar";
 
 export default function EventsPage() {
   const [searchQuery, setSearchQuery] = useState("");
