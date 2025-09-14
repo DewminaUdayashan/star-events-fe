@@ -29,6 +29,7 @@ interface AuthContextType extends AuthState {
   login: (credentials: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (updatedUser: ApplicationUser) => void;
   hasRole: (role: UserRole) => boolean;
   isRole: (role: UserRole) => boolean;
   hasAnyRole: (roles: UserRole[]) => boolean;
@@ -198,6 +199,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUser = (updatedUser: ApplicationUser) => {
+    // Update localStorage
+    if (typeof window !== "undefined") {
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    }
+
+    // Update auth state
+    setAuthState((prev) => ({
+      ...prev,
+      user: updatedUser,
+    }));
+  };
+
   // Role checking utilities
   const hasRole = (role: UserRole): boolean => {
     return authState.roles.includes(role);
@@ -216,6 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     register,
     logout,
+    updateUser,
     hasRole,
     isRole,
     hasAnyRole,
