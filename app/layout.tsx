@@ -7,6 +7,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { Navigation } from "@/components/layout/Navigation";
+import Footer from "@/components/Footer";
 import { Suspense } from "react";
 import "./globals.css";
 
@@ -44,7 +46,13 @@ html {
               enableSystem={false}
             >
               <AuthProvider>
-                <CartProvider>{children}</CartProvider>
+                <CartProvider>
+                  <div className="min-h-screen bg-gray-900 flex flex-col">
+                    <Navigation />
+                    <main className="flex-1">{children}</main>
+                    <Footer />
+                  </div>
+                </CartProvider>
               </AuthProvider>
             </ThemeProvider>
           </QueryProvider>
