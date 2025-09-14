@@ -158,6 +158,14 @@ export interface SalesReport {
   totalTickets: number
   eventCount: number
   period: string
+  revenue: number
+  averageTicketPrice: number
+  topEvents: Array<{
+    eventId: string
+    eventTitle: string
+    ticketsSold: number
+    revenue: number
+  }>
 }
 
 export interface UserReport {
@@ -165,4 +173,132 @@ export interface UserReport {
   activeUsers: number
   newRegistrations: number
   period: string
+  userGrowth: number
+  topOrganizers: Array<{
+    organizerId: string
+    organizerName: string
+    eventsCount: number
+    totalRevenue: number
+  }>
+}
+
+export interface EventReport {
+  totalEvents: number
+  publishedEvents: number
+  draftEvents: number
+  cancelledEvents: number
+  period: string
+  categoryBreakdown: Array<{
+    category: string
+    count: number
+    percentage: number
+  }>
+}
+
+export interface MonitoringReport {
+  systemHealth: 'healthy' | 'degraded' | 'unhealthy'
+  uptime: number
+  responseTime: number
+  errorRate: number
+  activeConnections: number
+  lastUpdated: string
+}
+
+// Organizer Report Types
+export interface OrganizerReport {
+  organizerId: string
+  totalEvents: number
+  totalTicketsSold: number
+  totalRevenue: number
+  period: string
+  events: Array<{
+    eventId: string
+    eventTitle: string
+    eventDate: string
+    ticketsSold: number
+    revenue: number
+    status: string
+  }>
+}
+
+// Payment Types
+export interface Payment {
+  id: string
+  ticketId: string
+  amount: number
+  currency: string
+  status: 'pending' | 'completed' | 'failed' | 'refunded'
+  paymentMethod: string
+  transactionId?: string
+  stripePaymentIntentId?: string
+  createdAt: string
+  updatedAt?: string
+}
+
+// QR Code Types
+export interface QRCodeData {
+  ticketId: string
+  ticketCode: string
+  eventId: string
+  eventTitle: string
+  customerName: string
+  purchaseDate: string
+  isValid: boolean
+}
+
+// Cart and Booking Types
+export interface CartItem {
+  eventId: string
+  eventPriceId: string
+  quantity: number
+  price: number
+  eventTitle: string
+  eventDate: string
+  venueName: string
+  category: string
+}
+
+export interface BookingSummary {
+  items: CartItem[]
+  subtotal: number
+  discount: number
+  loyaltyPointsUsed: number
+  loyaltyPointsEarned: number
+  total: number
+  appliedPromotion?: {
+    code: string
+    discount: number
+    type: 'percentage' | 'fixed'
+  }
+}
+
+// API Response Types
+export interface ApiError {
+  message: string
+  code?: string
+  details?: any
+  timestamp: string
+}
+
+export interface PaginatedApiResponse<T> {
+  data: T[]
+  totalCount: number
+  page: number
+  pageSize: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+}
+
+// Health Check Types
+export interface HealthCheck {
+  status: 'healthy' | 'unhealthy' | 'degraded'
+  timestamp: string
+  version: string
+  uptime: number
+  services: {
+    database: 'healthy' | 'unhealthy'
+    redis?: 'healthy' | 'unhealthy'
+    external: 'healthy' | 'unhealthy'
+  }
 }

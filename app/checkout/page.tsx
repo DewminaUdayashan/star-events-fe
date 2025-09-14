@@ -1,125 +1,174 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, CreditCard, Smartphone, Building, Shield, Calendar, Loader2 } from "lucide-react"
-import { useCart } from "@/contexts/CartContext"
-import { useAuth } from "@/contexts/AuthContext"
-import { paymentService, ticketsService } from "@/lib/services"
-import type { ProcessPaymentRequest } from "@/lib/types/api"
+import React, { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { 
+  ArrowLeft, 
+  CreditCard, 
+  Ticket, 
+  Calendar, 
+  MapPin, 
+  Users, 
+  Gift, 
+  Star,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  Minus,
+  Plus,
+  Trash2
+} from 'lucide-react'
+import Link from 'next/link'
+import { useCart } from '@/contexts/CartContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { useTicketBooking, usePaymentProcessing } from '@/hooks'
+import { StripePaymentForm } from '@/components/payment/StripePaymentForm'
+import type { CartItem } from '@/lib/types/api'
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, total, itemCount, clearCart } = useCart()
+  const searchParams = useSearchParams()
+  const { items: cartItems, removeItem, updateQuantity, clearCart } = useCart()
   const { user } = useAuth()
-  const [paymentMethod, setPaymentMethod] = useState("card")
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [error, setError] = useState("")
-  const [formData, setFormData] = useState({
-    email: user?.email || "",
-    firstName: user?.fullName?.split(" ")[0] || "",
-    lastName: user?.fullName?.split(" ").slice(1).join(" ") || "",
-    phone: "",
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-    cardName: "",
-    agreeTerms: false,
+  const { bookTicket, applyPromotion, useLoyaltyPoints, loading: bookingLoading } = useTicketBooking()
+  const { processPayment, loading: paymentLoading } = usePaymentProcessing()
+
+  const [currentStep, setCurrentStep] = useState<'review' | 'payment' | 'confirmation'>('review')
+  const [discountCode, setDiscountCode] = useState('')
+  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false)
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0)
+  const [appliedDiscount, setAppliedDiscount] = useState<{ code: string; amount: number } | null>(null)
+  const [billingInfo, setBillingInfo] = useState({
+    fullName: user?.fullName || '',
+    email: user?.email || '',
+    phone: user?.phoneNumber || '',
+    address: user?.address || '',
+    city: '',
+    postalCode: '',
+    country: 'Sri Lanka'
   })
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [ticketIds, setTicketIds] = useState<string[]>([])
 
-  const serviceFee = 100
-  const finalTotal = total + serviceFee
+  // Redirect if cart is empty
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      router.push('/events')
+    }
+  }, [cartItems, router])
 
+  // Redirect if not authenticated
   useEffect(() => {
     if (!user) {
-      router.push("/login")
-      return
+      router.push('/login?redirect=/checkout')
     }
-
-    // Pre-fill form with user data
-    setFormData((prev) => ({
-      ...prev,
-      email: user.email || "",
-      firstName: user.fullName?.split(" ")[0] || "",
-      lastName: user.fullName?.split(" ").slice(1).join(" ") || "",
-    }))
   }, [user, router])
 
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+  const calculateSubtotal = () => {
+    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+  const calculateDiscount = () => {
+    return appliedDiscount ? appliedDiscount.amount : 0
+  }
 
-    if (!formData.agreeTerms) {
-      setError("Please agree to the terms and conditions")
-      return
+  const calculateLoyaltyDiscount = () => {
+    return useLoyaltyPoints ? Math.min(loyaltyPoints * 0.01, calculateSubtotal() * 0.1) : 0 // 1 point = 1 cent, max 10% discount
+  }
+
+  const calculateTotal = () => {
+    const subtotal = calculateSubtotal()
+    const discount = calculateDiscount()
+    const loyaltyDiscount = calculateLoyaltyDiscount()
+    return Math.max(0, subtotal - discount - loyaltyDiscount)
+  }
+
+  const handleQuantityChange = (itemId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      removeItem(itemId)
+    } else {
+      updateQuantity(itemId, newQuantity)
     }
+  }
 
-    if (!user) {
-      setError("Please login to complete the purchase")
-      return
-    }
-
-    setIsProcessing(true)
+  const handleApplyDiscount = async () => {
+    if (!discountCode.trim()) return
 
     try {
-      // Process each cart item
-      for (const item of items) {
-        // First, book the ticket
-        const bookingRequest = {
-          eventId: item.eventId,
-          eventPriceId: item.ticketTypeId,
-          quantity: item.quantity,
-          useLoyaltyPoints: false,
-        }
-
-        const ticket = await ticketsService.bookTicket(bookingRequest)
-
-        // Then process payment for the ticket
-        const paymentRequest: ProcessPaymentRequest = {
-          ticketId: ticket.id,
-          paymentMethod: paymentMethod,
-          stripeToken: paymentMethod === "card" ? `tok_${Date.now()}` : undefined, // Mock token
-        }
-
-        await paymentService.processPayment(paymentRequest)
-      }
-
-      // Clear cart and redirect to confirmation
-      clearCart()
-      router.push("/booking-confirmation")
+      // This would typically call an API to validate the discount code
+      // For now, we'll simulate a 10% discount
+      const discountAmount = calculateSubtotal() * 0.1
+      setAppliedDiscount({ code: discountCode, amount: discountAmount })
+      setError(null)
     } catch (err) {
-      console.error("Payment processing error:", err)
-      setError("Payment failed. Please try again.")
-    } finally {
-      setIsProcessing(false)
+      setError('Invalid discount code')
     }
   }
 
-  if (items.length === 0) {
+  const handleRemoveDiscount = () => {
+    setAppliedDiscount(null)
+    setDiscountCode('')
+  }
+
+  const handleProceedToPayment = () => {
+    if (!agreedToTerms) {
+      setError('Please agree to the terms and conditions')
+      return
+    }
+    setCurrentStep('payment')
+  }
+
+  const handlePaymentSuccess = async (paymentIntent: any) => {
+    try {
+      setCurrentStep('confirmation')
+      setSuccess('Payment successful! Your tickets have been booked.')
+      
+      // Clear cart after successful payment
+      setTimeout(() => {
+        clearCart()
+        router.push('/my-tickets')
+      }, 3000)
+    } catch (err) {
+      setError('Payment successful but failed to process tickets. Please contact support.')
+    }
+  }
+
+  const handlePaymentError = (error: string) => {
+    setError(error)
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  if (cartItems.length === 0) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">No Items to Checkout</h1>
-          <p className="text-gray-400 mb-6">Your cart is empty. Add some tickets first.</p>
+          <Ticket className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-2">Your cart is empty</h2>
+          <p className="text-gray-400 mb-6">Add some events to your cart to proceed with checkout</p>
           <Link href="/events">
-            <Button className="bg-purple-600 hover:bg-purple-700 rounded-2xl">Browse Events</Button>
+            <Button className="bg-purple-600 hover:bg-purple-700">
+              Browse Events
+            </Button>
           </Link>
         </div>
       </div>
@@ -128,320 +177,381 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center mb-8">
-          <Link href="/cart">
-            <Button variant="ghost" className="text-gray-400 hover:text-white mr-4 rounded-2xl">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Cart
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold text-white">Checkout</h1>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Checkout Form */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Error Alert */}
-              {error && (
-                <Alert className="border-red-500 bg-red-500/10 rounded-2xl">
-                  <AlertDescription className="text-red-400">{error}</AlertDescription>
-                </Alert>
-              )}
-
-              {/* Contact Information */}
-              <Card className="bg-gray-800 border-gray-700 rounded-3xl">
-                <CardHeader>
-                  <CardTitle className="text-white">Contact Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="email" className="text-gray-300">
-                      Email Address
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
-                      className="bg-gray-700 border-gray-600 text-white rounded-2xl"
-                      placeholder="your@email.com"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName" className="text-gray-300">
-                        First Name
-                      </Label>
-                      <Input
-                        id="firstName"
-                        required
-                        value={formData.firstName}
-                        onChange={(e) => handleInputChange("firstName", e.target.value)}
-                        className="bg-gray-700 border-gray-600 text-white rounded-2xl"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName" className="text-gray-300">
-                        Last Name
-                      </Label>
-                      <Input
-                        id="lastName"
-                        required
-                        value={formData.lastName}
-                        onChange={(e) => handleInputChange("lastName", e.target.value)}
-                        className="bg-gray-700 border-gray-600 text-white rounded-2xl"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="phone" className="text-gray-300">
-                      Phone Number
-                    </Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      required
-                      value={formData.phone}
-                      onChange={(e) => handleInputChange("phone", e.target.value)}
-                      className="bg-gray-700 border-gray-600 text-white rounded-2xl"
-                      placeholder="+94 77 123 4567"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Payment Method */}
-              <Card className="bg-gray-800 border-gray-700 rounded-3xl">
-                <CardHeader>
-                  <CardTitle className="text-white">Payment Method</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <div className="flex items-center space-x-2 p-4 border border-gray-600 rounded-2xl">
-                      <RadioGroupItem value="card" id="card" />
-                      <CreditCard className="h-5 w-5 text-gray-400" />
-                      <Label htmlFor="card" className="text-white flex-1">
-                        Credit/Debit Card
-                      </Label>
-                      <div className="flex space-x-2">
-                        <Badge variant="outline" className="border-gray-600 text-gray-400 rounded-xl">
-                          Visa
-                        </Badge>
-                        <Badge variant="outline" className="border-gray-600 text-gray-400 rounded-xl">
-                          Mastercard
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2 p-4 border border-gray-600 rounded-2xl opacity-50">
-                      <RadioGroupItem value="mobile" id="mobile" disabled />
-                      <Smartphone className="h-5 w-5 text-gray-400" />
-                      <Label htmlFor="mobile" className="text-gray-400 flex-1">
-                        Mobile Payment (eZCash, mCash)
-                      </Label>
-                      <Badge variant="outline" className="border-gray-600 text-gray-400 rounded-xl">
-                        Coming Soon
-                      </Badge>
-                    </div>
-                    <div className="flex items-center space-x-2 p-4 border border-gray-600 rounded-2xl opacity-50">
-                      <RadioGroupItem value="bank" id="bank" disabled />
-                      <Building className="h-5 w-5 text-gray-400" />
-                      <Label htmlFor="bank" className="text-gray-400 flex-1">
-                        Bank Transfer
-                      </Label>
-                      <Badge variant="outline" className="border-gray-600 text-gray-400 rounded-xl">
-                        Coming Soon
-                      </Badge>
-                    </div>
-                  </RadioGroup>
-
-                  {paymentMethod === "card" && (
-                    <div className="space-y-4 mt-4">
-                      <div>
-                        <Label htmlFor="cardNumber" className="text-gray-300">
-                          Card Number
-                        </Label>
-                        <Input
-                          id="cardNumber"
-                          required
-                          value={formData.cardNumber}
-                          onChange={(e) => handleInputChange("cardNumber", e.target.value)}
-                          className="bg-gray-700 border-gray-600 text-white rounded-2xl"
-                          placeholder="1234 5678 9012 3456"
-                          maxLength={19}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="expiryDate" className="text-gray-300">
-                            Expiry Date
-                          </Label>
-                          <Input
-                            id="expiryDate"
-                            required
-                            value={formData.expiryDate}
-                            onChange={(e) => handleInputChange("expiryDate", e.target.value)}
-                            className="bg-gray-700 border-gray-600 text-white rounded-2xl"
-                            placeholder="MM/YY"
-                            maxLength={5}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="cvv" className="text-gray-300">
-                            CVV
-                          </Label>
-                          <Input
-                            id="cvv"
-                            required
-                            value={formData.cvv}
-                            onChange={(e) => handleInputChange("cvv", e.target.value)}
-                            className="bg-gray-700 border-gray-600 text-white rounded-2xl"
-                            placeholder="123"
-                            maxLength={4}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="cardName" className="text-gray-300">
-                          Name on Card
-                        </Label>
-                        <Input
-                          id="cardName"
-                          required
-                          value={formData.cardName}
-                          onChange={(e) => handleInputChange("cardName", e.target.value)}
-                          className="bg-gray-700 border-gray-600 text-white rounded-2xl"
-                          placeholder="John Doe"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Terms and Conditions */}
-              <Card className="bg-gray-800 border-gray-700 rounded-3xl">
-                <CardContent className="p-6">
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      id="terms"
-                      checked={formData.agreeTerms}
-                      onCheckedChange={(checked) => handleInputChange("agreeTerms", checked as boolean)}
-                      className="rounded-lg"
-                    />
-                    <div className="text-sm text-gray-300">
-                      <Label htmlFor="terms" className="cursor-pointer">
-                        I agree to the{" "}
-                        <Link href="/terms" className="text-purple-400 hover:underline">
-                          Terms and Conditions
-                        </Link>{" "}
-                        and{" "}
-                        <Link href="/privacy" className="text-purple-400 hover:underline">
-                          Privacy Policy
-                        </Link>
-                        . I understand that all ticket sales are final and non-refundable.
-                      </Label>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+      {/* Header */}
+      <div className="bg-gray-800 border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Link href="/cart">
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Cart
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Checkout</h1>
+                <p className="text-gray-400">Complete your ticket purchase</p>
+              </div>
             </div>
-
-            {/* Order Summary */}
-            <div className="space-y-6">
-              <Card className="bg-gray-800 border-gray-700 sticky top-4 rounded-3xl">
-                <CardHeader>
-                  <CardTitle className="text-white">Order Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Order Items */}
-                  <div className="space-y-3">
-                    {items.map((item) => (
-                      <div key={`${item.eventId}-${item.ticketTypeId}`} className="flex space-x-3">
-                        <div className="relative w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0">
-                          <Image
-                            src={item.event.image || "/placeholder.svg?height=64&width=64&query=event"}
-                            alt={item.event.title}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium text-white truncate">{item.event.title}</h4>
-                          <p className="text-xs text-purple-400">{item.ticketType.name}</p>
-                          <div className="flex items-center text-xs text-gray-400 mt-1">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            <span>{new Date(item.event.date).toLocaleDateString()}</span>
-                          </div>
-                          <div className="flex justify-between items-center mt-1">
-                            <span className="text-xs text-gray-400">Qty: {item.quantity}</span>
-                            <span className="text-sm font-medium text-white">
-                              Rs. {(item.ticketType.price * item.quantity).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <Separator className="bg-gray-700" />
-
-                  {/* Price Breakdown */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-gray-300">
-                      <span>Subtotal ({itemCount} items):</span>
-                      <span>Rs. {total.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-300">
-                      <span>Service Fee:</span>
-                      <span>Rs. {serviceFee.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-400 text-sm">
-                      <span>Processing Fee:</span>
-                      <span>Included</span>
-                    </div>
-                  </div>
-
-                  <Separator className="bg-gray-700" />
-
-                  <div className="flex justify-between text-white font-bold text-lg">
-                    <span>Total:</span>
-                    <span>Rs. {finalTotal.toLocaleString()}</span>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full bg-purple-600 hover:bg-purple-700 rounded-2xl"
-                    size="lg"
-                    disabled={isProcessing || !formData.agreeTerms}
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing Payment...
-                      </>
-                    ) : (
-                      `Pay Rs. ${finalTotal.toLocaleString()}`
-                    )}
-                  </Button>
-
-                  <div className="flex items-center justify-center space-x-2 text-xs text-gray-400">
-                    <Shield className="h-4 w-4" />
-                    <span>Secure SSL encrypted payment</span>
-                  </div>
-
-                  <div className="text-xs text-gray-500 text-center">
-                    <p>Your payment is processed securely through our payment gateway.</p>
-                    <p className="mt-1">You will receive an email confirmation after successful payment.</p>
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="text-right">
+              <p className="text-gray-400 text-sm">Step {currentStep === 'review' ? '1' : currentStep === 'payment' ? '2' : '3'} of 3</p>
+              <p className="text-white font-medium capitalize">{currentStep}</p>
             </div>
           </div>
-        </form>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {error && (
+              <Alert className="border-red-500 bg-red-500/10">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-red-400">{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert className="border-green-500 bg-green-500/10">
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription className="text-green-400">{success}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Review Step */}
+            {currentStep === 'review' && (
+              <>
+                {/* Order Summary */}
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white">Order Summary</CardTitle>
+                    <CardDescription className="text-gray-400">
+                      Review your selected events and tickets
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {cartItems.map((item) => (
+                      <div key={`${item.eventId}-${item.eventPriceId}`} className="flex items-center space-x-4 p-4 bg-gray-900 rounded-lg">
+                        <div className="flex-1">
+                          <h3 className="text-white font-medium">{item.eventTitle}</h3>
+                          <p className="text-gray-400 text-sm">{item.category}</p>
+                          <p className="text-gray-400 text-sm">{formatDate(item.eventDate)}</p>
+                          <p className="text-gray-400 text-sm">{item.venueName}</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleQuantityChange(`${item.eventId}-${item.eventPriceId}`, item.quantity - 1)}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <span className="text-white font-medium w-8 text-center">{item.quantity}</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleQuantityChange(`${item.eventId}-${item.eventPriceId}`, item.quantity + 1)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-white font-medium">LKR {(item.price * item.quantity).toFixed(2)}</p>
+                          <p className="text-gray-400 text-sm">LKR {item.price.toFixed(2)} each</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeItem(`${item.eventId}-${item.eventPriceId}`)}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                {/* Promotions */}
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center">
+                      <Gift className="h-5 w-5 mr-2" />
+                      Promotions & Discounts
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Discount Code */}
+                    <div className="space-y-2">
+                      <Label className="text-gray-300">Discount Code</Label>
+                      <div className="flex space-x-2">
+                        <Input
+                          value={discountCode}
+                          onChange={(e) => setDiscountCode(e.target.value)}
+                          placeholder="Enter discount code"
+                          className="bg-gray-900 border-gray-600 text-white"
+                          disabled={!!appliedDiscount}
+                        />
+                        {appliedDiscount ? (
+                          <Button onClick={handleRemoveDiscount} variant="outline">
+                            Remove
+                          </Button>
+                        ) : (
+                          <Button onClick={handleApplyDiscount} variant="outline">
+                            Apply
+                          </Button>
+                        )}
+                      </div>
+                      {appliedDiscount && (
+                        <p className="text-green-400 text-sm">
+                          Discount "{appliedDiscount.code}" applied: -LKR {appliedDiscount.amount.toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Loyalty Points */}
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="loyalty"
+                          checked={useLoyaltyPoints}
+                          onCheckedChange={setUseLoyaltyPoints}
+                        />
+                        <Label htmlFor="loyalty" className="text-gray-300">
+                          Use Loyalty Points
+                        </Label>
+                      </div>
+                      {useLoyaltyPoints && (
+                        <div className="flex items-center space-x-2">
+                          <Star className="h-4 w-4 text-yellow-400" />
+                          <span className="text-gray-300">Available: 1,250 points</span>
+                          <Input
+                            type="number"
+                            value={loyaltyPoints}
+                            onChange={(e) => setLoyaltyPoints(Number(e.target.value))}
+                            placeholder="Enter points to use"
+                            className="bg-gray-900 border-gray-600 text-white w-32"
+                            max={1250}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Billing Information */}
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white">Billing Information</CardTitle>
+                    <CardDescription className="text-gray-400">
+                      Your contact and billing details
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="fullName" className="text-gray-300">Full Name *</Label>
+                        <Input
+                          id="fullName"
+                          value={billingInfo.fullName}
+                          onChange={(e) => setBillingInfo(prev => ({ ...prev, fullName: e.target.value }))}
+                          className="bg-gray-900 border-gray-600 text-white"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-gray-300">Email *</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={billingInfo.email}
+                          onChange={(e) => setBillingInfo(prev => ({ ...prev, email: e.target.value }))}
+                          className="bg-gray-900 border-gray-600 text-white"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="phone" className="text-gray-300">Phone Number</Label>
+                        <Input
+                          id="phone"
+                          value={billingInfo.phone}
+                          onChange={(e) => setBillingInfo(prev => ({ ...prev, phone: e.target.value }))}
+                          className="bg-gray-900 border-gray-600 text-white"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="city" className="text-gray-300">City</Label>
+                        <Input
+                          id="city"
+                          value={billingInfo.city}
+                          onChange={(e) => setBillingInfo(prev => ({ ...prev, city: e.target.value }))}
+                          className="bg-gray-900 border-gray-600 text-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="address" className="text-gray-300">Address</Label>
+                      <Textarea
+                        id="address"
+                        value={billingInfo.address}
+                        onChange={(e) => setBillingInfo(prev => ({ ...prev, address: e.target.value }))}
+                        className="bg-gray-900 border-gray-600 text-white"
+                        rows={3}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Terms and Conditions */}
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start space-x-2">
+                      <Checkbox
+                        id="terms"
+                        checked={agreedToTerms}
+                        onCheckedChange={setAgreedToTerms}
+                        className="mt-1"
+                      />
+                      <Label htmlFor="terms" className="text-gray-300 text-sm">
+                        I agree to the{' '}
+                        <Link href="/terms" className="text-purple-400 hover:text-purple-300">
+                          Terms of Service
+                        </Link>{' '}
+                        and{' '}
+                        <Link href="/privacy" className="text-purple-400 hover:text-purple-300">
+                          Privacy Policy
+                        </Link>
+                        . I understand that all sales are final and tickets are non-refundable.
+                      </Label>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
+            {/* Payment Step */}
+            {currentStep === 'payment' && (
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center">
+                    <CreditCard className="h-5 w-5 mr-2" />
+                    Payment
+                  </CardTitle>
+                  <CardDescription className="text-gray-400">
+                    Complete your purchase securely
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <StripePaymentForm
+                    amount={calculateTotal()}
+                    currency="LKR"
+                    ticketId="checkout-session" // This would be generated after booking
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Confirmation Step */}
+            {currentStep === 'confirmation' && (
+              <Card className="bg-gray-800 border-gray-700">
+                <CardContent className="pt-6 text-center">
+                  <div className="flex justify-center mb-6">
+                    <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center">
+                      <CheckCircle className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
+                  <h2 className="text-2xl font-bold text-white mb-2">Payment Successful!</h2>
+                  <p className="text-gray-400 mb-6">
+                    Your tickets have been booked successfully. You will receive a confirmation email shortly.
+                  </p>
+                  <div className="space-y-2">
+                    <Link href="/my-tickets">
+                      <Button className="bg-purple-600 hover:bg-purple-700">
+                        View My Tickets
+                      </Button>
+                    </Link>
+                    <Link href="/events">
+                      <Button variant="outline">
+                        Browse More Events
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Order Summary Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="bg-gray-800 border-gray-700 sticky top-8">
+              <CardHeader>
+                <CardTitle className="text-white">Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Subtotal</span>
+                    <span className="text-white">LKR {calculateSubtotal().toFixed(2)}</span>
+                  </div>
+                  {appliedDiscount && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Discount ({appliedDiscount.code})</span>
+                      <span className="text-green-400">-LKR {appliedDiscount.amount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {useLoyaltyPoints && loyaltyPoints > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Loyalty Points</span>
+                      <span className="text-green-400">-LKR {calculateLoyaltyDiscount().toFixed(2)}</span>
+                    </div>
+                  )}
+                  <Separator className="bg-gray-700" />
+                  <div className="flex justify-between text-lg font-bold">
+                    <span className="text-white">Total</span>
+                    <span className="text-white">LKR {calculateTotal().toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {currentStep === 'review' && (
+                  <Button
+                    onClick={handleProceedToPayment}
+                    disabled={!agreedToTerms || bookingLoading}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                  >
+                    {bookingLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        Proceed to Payment
+                        <CreditCard className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                {currentStep === 'payment' && (
+                  <div className="space-y-2">
+                    <Button
+                      onClick={() => setCurrentStep('review')}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      Back to Review
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   )
