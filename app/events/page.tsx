@@ -27,6 +27,7 @@ import {
 import { useEvents } from "@/lib/services";
 import type { EventFilters } from "@/lib/types/api";
 import Navbar from "@/components/Navbar";
+import { getImageUrl } from "@/lib/utils";
 
 export default function EventsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -272,10 +273,7 @@ export default function EventsPage() {
               >
                 <div className="relative h-48 overflow-hidden">
                   <Image
-                    src={
-                      event.image ||
-                      "/placeholder.svg?height=200&width=400&query=event"
-                    }
+                    src={getImageUrl(event.imageUrl || event.image)}
                     alt={event.title || "Event"}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"

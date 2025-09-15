@@ -23,7 +23,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { useEvent, ticketsService } from "@/lib/services";
-import { useCart } from "@/contexts/CartContext";
+import { CartProvider } from "@/contexts/CartContext";
+import { getImageUrl } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import type { EventPrice, BookTicketRequest } from "@/lib/types/api";
 
@@ -162,10 +163,7 @@ export default function EventDetailsPage() {
       {/* Hero Section */}
       <div className="relative h-96 overflow-hidden">
         <Image
-          src={
-            event.image ||
-            "/placeholder.svg?height=400&width=800&query=event hero"
-          }
+          src={getImageUrl(event.imageUrl || event.image)}
           alt={event.title || "Event"}
           fill
           className="object-cover"

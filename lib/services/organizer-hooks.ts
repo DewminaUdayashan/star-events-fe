@@ -116,8 +116,19 @@ export function useUpdateEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...data }: { id: string; [key: string]: any }) =>
-      organizerService.updateEvent(id, data),
+    mutationFn: ({
+      id,
+      eventData,
+      ...data
+    }: {
+      id: string;
+      eventData?: FormData;
+      [key: string]: any;
+    }) => {
+      // If eventData is provided, use it (FormData), otherwise use the spread data
+      const updateData = eventData || data;
+      return organizerService.updateEvent(id, updateData);
+    },
     onSuccess: (_, variables) => {
       // Invalidate specific event and events list
       queryClient.invalidateQueries({

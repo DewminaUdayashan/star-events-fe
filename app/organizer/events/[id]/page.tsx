@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,13 +17,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft,
   Edit,
-  Eye,
-  EyeOff,
   Calendar,
   Clock,
   MapPin,
@@ -35,201 +39,209 @@ import {
   Share2,
   Download,
   BarChart3,
+  CheckCircle,
+  XCircle,
+  Eye,
+  MoreHorizontal,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  useOrganizerEvent,
+  useEventAnalytics,
+  useDeleteEvent,
+  useUpdateEvent,
+} from "@/lib/services/organizer-hooks";
+import { useToast } from "@/hooks/use-toast";
 
-interface EventPrice {
-  id: string;
-  category: string;
-  price: number;
-  stock: number;
-  sold: number;
-  description: string;
-}
-
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  eventDate: string;
-  eventTime: string;
-  venueName: string;
-  venueLocation: string;
-  venueCapacity: number;
-  image: string;
-  prices: EventPrice[];
-  isPublished: boolean;
-  totalTicketsSold: number;
-  totalRevenue: number;
-  views: number;
-}
-
-export default function EventDetailsPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function OrganizerEventDetailsPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const params = useParams();
+  const eventId = params.id as string;
+  const { toast } = useToast();
 
-  const [event, setEvent] = useState<Event | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
 
-  // Load event data
-  useEffect(() => {
-    const loadEvent = async () => {
-      try {
-        // Mock data for now - replace with actual API call
-        const mockEvent: Event = {
-          id: params.id,
-          title: "Electronic Music Festival 2024",
-          description:
-            "Join us for an unforgettable night of electronic music featuring top DJs from around the world. Experience cutting-edge sound and lighting in an incredible atmosphere that will keep you dancing until dawn.",
-          category: "music",
-          eventDate: "2024-03-15",
-          eventTime: "19:00",
-          venueName: "Colombo Convention Centre",
-          venueLocation: "Colombo, Western Province",
-          venueCapacity: 2000,
-          image:
-            "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=2070",
-          prices: [
-            {
-              id: "1",
-              category: "General Admission",
-              price: 5000,
-              stock: 800,
-              sold: 450,
-              description: "Standard entry ticket with access to main floor",
-            },
-            {
-              id: "2",
-              category: "VIP",
-              price: 12000,
-              stock: 200,
-              sold: 120,
-              description:
-                "VIP access with exclusive areas and complimentary drinks",
-            },
-            {
-              id: "3",
-              category: "Early Bird",
-              price: 3500,
-              stock: 100,
-              sold: 100,
-              description: "Limited early bird pricing (SOLD OUT)",
-            },
-          ],
-          isPublished: true,
-          totalTicketsSold: 670,
-          totalRevenue: 3665000, // Rs. 3,665,000
-          views: 2840,
-        };
+  // TanStack Query hooks
+  const {
+    data: event,
+    isLoading: eventLoading,
+    error: eventError,
+    refetch: refetchEvent,
+  } = useOrganizerEvent(eventId);
 
-        // Simulate API loading
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+  const {
+    data: analytics,
+    isLoading: analyticsLoading,
+    error: analyticsError,
+  } = useEventAnalytics(eventId);
 
-        setEvent(mockEvent);
-      } catch (error) {
-        console.error("Error loading event:", error);
-      } finally {
-        setLoading(false);
+  // Mutations
+  const deleteEventMutation = useDeleteEvent();
+  const updateEventMutation = useUpdateEvent();
+
+  const handleDelete = () => {
+    deleteEventMutation.mutate(eventId, {
+      onSuccess: () => {
+        toast({
+          title: "Success",
+          description: "Event deleted successfully",
+        });
+        router.push("/organizer/events");
+      },
+      onError: (error) => {
+        toast({
+          title: "Error",
+          description: "Failed to delete event",
+          variant: "destructive",
+        });
+        console.error("Delete error:", error);
+      },
+    });
+  };
+
+  const handlePublishToggle = () => {
+    if (!event) return;
+
+    const newStatus = !event.isPublished;
+    updateEventMutation.mutate(
+      {
+        id: eventId,
+        isPublished: newStatus,
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Success",
+            description: `Event ${
+              newStatus ? "published" : "unpublished"
+            } successfully`,
+          });
+          refetchEvent();
+          setPublishDialogOpen(false);
+        },
+        onError: (error) => {
+          toast({
+            title: "Error",
+            description: `Failed to ${
+              newStatus ? "publish" : "unpublish"
+            } event`,
+            variant: "destructive",
+          });
+          console.error("Publish toggle error:", error);
+        },
       }
-    };
+    );
+  };
 
-    loadEvent();
-  }, [params.id]);
-
-  const handleTogglePublish = async () => {
+  const handleCopyEventLink = () => {
     if (!event) return;
+    const eventUrl = `${window.location.origin}/events/${event.id}`;
+    navigator.clipboard.writeText(eventUrl);
+    toast({
+      title: "Success",
+      description: "Event link copied to clipboard",
+    });
+  };
 
-    setActionLoading("publish");
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setEvent((prev) =>
-        prev ? { ...prev, isPublished: !prev.isPublished } : null
+  const getStatusBadge = (isPublished: boolean) => {
+    if (isPublished) {
+      return (
+        <Badge className="bg-green-600">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Published
+        </Badge>
       );
-    } catch (error) {
-      console.error("Error toggling publish status:", error);
-    } finally {
-      setActionLoading(null);
+    } else {
+      return (
+        <Badge variant="outline">
+          <Clock className="h-3 w-3 mr-1" />
+          Draft
+        </Badge>
+      );
     }
   };
 
-  const handleDuplicate = async () => {
-    if (!event) return;
-
-    setActionLoading("duplicate");
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Redirect to create page with pre-filled data
-      router.push("/organizer/events/create");
-    } catch (error) {
-      console.error("Error duplicating event:", error);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!event) return;
-
-    setActionLoading("delete");
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Redirect to events list
-      router.push("/organizer/events");
-    } catch (error) {
-      console.error("Error deleting event:", error);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  if (loading) {
+  // Loading state
+  if (eventLoading) {
     return (
-      <ProtectedRoute requiredRole="Organizer">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-6xl mx-auto space-y-8">
-            <div className="flex items-center space-x-4">
-              <Skeleton className="h-10 w-32 bg-gray-700" />
-              <Skeleton className="h-8 w-64 bg-gray-700" />
+      <ProtectedRoute requiredRole={["Organizer"]}>
+        <div className="min-h-screen bg-black text-white">
+          <div className="container mx-auto px-4 py-8">
+            {/* Header Skeleton */}
+            <div className="flex items-center gap-4 mb-8">
+              <Skeleton className="h-10 w-10 rounded" />
+              <div className="flex-1">
+                <Skeleton className="h-8 w-64 mb-2" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+              <Skeleton className="h-10 w-24" />
             </div>
 
+            {/* Event Details Skeleton */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
-                <Card className="bg-gray-800 border-gray-700">
-                  <CardContent className="p-6">
-                    <Skeleton className="h-64 w-full bg-gray-700 rounded-lg mb-4" />
-                    <Skeleton className="h-8 w-3/4 bg-gray-700 mb-2" />
-                    <Skeleton className="h-4 w-full bg-gray-700 mb-2" />
-                    <Skeleton className="h-4 w-2/3 bg-gray-700" />
+                <Card className="bg-gray-900 border-gray-700">
+                  <CardContent className="p-0">
+                    <Skeleton className="aspect-video w-full rounded-t-lg" />
+                    <div className="p-6 space-y-4">
+                      <Skeleton className="h-6 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </div>
                   </CardContent>
                 </Card>
               </div>
 
               <div className="space-y-6">
-                <Card className="bg-gray-800 border-gray-700">
-                  <CardHeader>
-                    <Skeleton className="h-6 w-32 bg-gray-700" />
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-16 bg-gray-700" />
-                    ))}
-                  </CardContent>
-                </Card>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Card key={i} className="bg-gray-900 border-gray-700">
+                    <CardHeader>
+                      <Skeleton className="h-5 w-24" />
+                    </CardHeader>
+                    <CardContent>
+                      <Skeleton className="h-8 w-16" />
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
+            </div>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  // Error state
+  if (eventError) {
+    return (
+      <ProtectedRoute requiredRole={["Organizer"]}>
+        <div className="min-h-screen bg-black text-white flex items-center justify-center">
+          <div className="text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-red-500 mb-2">
+              Error Loading Event
+            </h1>
+            <p className="text-gray-400 mb-4">
+              {eventError?.message || "Failed to load event details"}
+            </p>
+            <div className="space-x-4">
+              <Button
+                onClick={() => refetchEvent()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Try Again
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push("/organizer/events")}
+                className="border-gray-600 hover:bg-gray-800"
+              >
+                Back to Events
+              </Button>
             </div>
           </div>
         </div>
@@ -239,399 +251,463 @@ export default function EventDetailsPage({
 
   if (!event) {
     return (
-      <ProtectedRoute requiredRole="Organizer">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-3xl font-bold text-white mb-4">
+      <ProtectedRoute requiredRole={["Organizer"]}>
+        <div className="min-h-screen bg-black text-white flex items-center justify-center">
+          <div className="text-center">
+            <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-gray-300 mb-2">
               Event Not Found
             </h1>
-            <p className="text-gray-400 mb-8">
-              The event you're looking for doesn't exist or has been removed.
+            <p className="text-gray-400 mb-4">
+              The event you're looking for doesn't exist or you don't have
+              permission to view it.
             </p>
-            <Link href="/organizer/events">
-              <Button className="bg-purple-600 hover:bg-purple-700">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Events
-              </Button>
-            </Link>
+            <Button
+              onClick={() => router.push("/organizer/events")}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Back to Events
+            </Button>
           </div>
         </div>
       </ProtectedRoute>
     );
   }
 
-  const eventDate = new Date(`${event.eventDate}T${event.eventTime}`);
-  const isUpcoming = eventDate > new Date();
-  const availableTickets = event.prices.reduce(
-    (total, price) => total + (price.stock - price.sold),
-    0
-  );
-  const soldOutCategories = event.prices.filter(
-    (price) => price.sold >= price.stock
-  ).length;
-
   return (
-    <ProtectedRoute requiredRole="Organizer">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
+    <ProtectedRoute requiredRole={["Organizer"]}>
+      <div className="min-h-screen bg-black text-white">
+        <div className="container mx-auto px-4 py-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center space-x-4">
-              <Link href="/organizer/events">
-                <Button
-                  variant="ghost"
-                  className="text-gray-400 hover:text-white"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Events
-                </Button>
-              </Link>
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/organizer/events")}
+                className="p-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">
                   {event.title}
                 </h1>
-                <div className="flex items-center space-x-4">
-                  <Badge variant={event.isPublished ? "default" : "secondary"}>
-                    {event.isPublished ? "Published" : "Draft"}
-                  </Badge>
-                  <Badge variant={isUpcoming ? "default" : "outline"}>
-                    {isUpcoming ? "Upcoming" : "Past Event"}
-                  </Badge>
-                  <span className="text-gray-400 text-sm flex items-center">
-                    <Eye className="h-4 w-4 mr-1" />
-                    {event.views.toLocaleString()} views
-                  </span>
+                <div className="flex items-center gap-4">
+                  {getStatusBadge(event.isPublished || false)}
+                  <span className="text-gray-400">Event ID: {event.id}</span>
                 </div>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex space-x-2">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                className="border-gray-600"
-                disabled={actionLoading === "duplicate"}
+                size="sm"
+                onClick={handleCopyEventLink}
+                className="border-gray-600 hover:bg-gray-800"
               >
                 <Share2 className="h-4 w-4 mr-2" />
                 Share
               </Button>
-              <Button
-                variant="outline"
-                onClick={handleDuplicate}
-                disabled={!!actionLoading}
-                className="border-gray-600"
-              >
-                {actionLoading === "duplicate" ? (
-                  "Duplicating..."
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Duplicate
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleTogglePublish}
-                disabled={!!actionLoading}
-                className="border-gray-600"
-              >
-                {actionLoading === "publish" ? (
-                  "Updating..."
-                ) : (
-                  <>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="p-2">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-gray-800 border-gray-600">
+                  <DropdownMenuItem
+                    onClick={() =>
+                      router.push(`/organizer/events/${event.id}/edit`)
+                    }
+                    className="text-blue-400"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Event
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setPublishDialogOpen(true)}
+                    className="text-green-400"
+                  >
                     {event.isPublished ? (
-                      <EyeOff className="h-4 w-4 mr-2" />
+                      <>
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Unpublish
+                      </>
                     ) : (
-                      <Eye className="h-4 w-4 mr-2" />
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Publish
+                      </>
                     )}
-                    {event.isPublished ? "Unpublish" : "Publish"}
-                  </>
-                )}
-              </Button>
-              <Link href={`/organizer/events/${event.id}/edit`}>
-                <Button className="bg-purple-600 hover:bg-purple-700">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Event
-                </Button>
-              </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => router.push(`/events/${event.id}`)}
+                    className="text-purple-400"
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Preview Public Page
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setDeleteDialogOpen(true)}
+                    className="text-red-400"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Event
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
+          {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content */}
+            {/* Left Column - Event Details */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Event Image & Details */}
-              <Card className="bg-gray-800 border-gray-700">
-                <CardContent className="p-6">
-                  <div className="aspect-video relative mb-6 rounded-lg overflow-hidden">
+              {/* Event Image and Basic Info */}
+              <Card className="bg-gray-900 border-gray-700">
+                <CardContent className="p-0">
+                  <div className="aspect-video relative rounded-t-lg overflow-hidden">
                     <Image
-                      src={event.image}
-                      alt={event.title}
+                      src={event.image || "/placeholder.svg"}
+                      alt={event.title || "Event"}
                       fill
                       className="object-cover"
                     />
                   </div>
-
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="flex items-center space-x-2 text-gray-300">
-                        <Calendar className="h-4 w-4" />
+                  <div className="p-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                      <div className="flex items-center text-gray-300">
+                        <Calendar className="h-4 w-4 mr-2" />
                         <div>
                           <p className="text-sm text-gray-400">Date</p>
                           <p className="font-medium">
-                            {eventDate.toLocaleDateString()}
+                            {new Date(event.eventDate).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-2 text-gray-300">
-                        <Clock className="h-4 w-4" />
-                        <div>
-                          <p className="text-sm text-gray-400">Time</p>
-                          <p className="font-medium">
-                            {eventDate.toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
+                      {event.eventTime && (
+                        <div className="flex items-center text-gray-300">
+                          <Clock className="h-4 w-4 mr-2" />
+                          <div>
+                            <p className="text-sm text-gray-400">Time</p>
+                            <p className="font-medium">{event.eventTime}</p>
+                          </div>
                         </div>
-                      </div>
+                      )}
 
-                      <div className="flex items-center space-x-2 text-gray-300">
-                        <MapPin className="h-4 w-4" />
+                      <div className="flex items-center text-gray-300">
+                        <MapPin className="h-4 w-4 mr-2" />
                         <div>
                           <p className="text-sm text-gray-400">Venue</p>
-                          <p className="font-medium">{event.venueName}</p>
+                          <p className="font-medium">
+                            {event.venue?.name || "TBD"}
+                          </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-2 text-gray-300">
-                        <Users className="h-4 w-4" />
+                      <div className="flex items-center text-gray-300">
+                        <Ticket className="h-4 w-4 mr-2" />
                         <div>
-                          <p className="text-sm text-gray-400">Capacity</p>
-                          <p className="font-medium">
-                            {event.venueCapacity.toLocaleString()}
+                          <p className="text-sm text-gray-400">Category</p>
+                          <p className="font-medium capitalize">
+                            {event.category || "General"}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    <div>
-                      <h3 className="text-xl font-semibold text-white mb-2">
-                        About This Event
-                      </h3>
-                      <p className="text-gray-300 leading-relaxed">
-                        {event.description}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-gray-400 mb-1">Location</p>
-                      <p className="text-white">{event.venueLocation}</p>
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-white mb-2">
+                          Description
+                        </h3>
+                        <p className="text-gray-300 leading-relaxed">
+                          {event.description || "No description available."}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Ticket Categories */}
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Ticket className="h-5 w-5 mr-2" />
-                    Ticket Categories
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {event.prices.map((price) => {
-                    const soldPercentage = (price.sold / price.stock) * 100;
-                    const isSoldOut = price.sold >= price.stock;
-
-                    return (
-                      <div
-                        key={price.id}
-                        className="border border-gray-700 rounded-lg p-4"
-                      >
-                        <div className="flex items-center justify-between mb-2">
+              {/* Pricing Tiers */}
+              {event.prices && event.prices.length > 0 && (
+                <Card className="bg-gray-900 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center">
+                      <Ticket className="h-5 w-5 mr-2" />
+                      Ticket Pricing
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {event.prices.map((price, index) => (
+                        <div
+                          key={price.id || index}
+                          className="flex items-center justify-between p-4 bg-gray-800 rounded-lg"
+                        >
                           <div>
                             <h4 className="text-white font-medium">
                               {price.category}
                             </h4>
-                            <p className="text-gray-400 text-sm">
-                              {price.description}
-                            </p>
                           </div>
                           <div className="text-right">
                             <p className="text-white font-bold">
-                              Rs. {price.price.toLocaleString()}
+                              ${price.price.toFixed(2)}
                             </p>
-                            <Badge
-                              variant={isSoldOut ? "destructive" : "outline"}
-                            >
-                              {isSoldOut
-                                ? "SOLD OUT"
-                                : `${price.stock - price.sold} left`}
-                            </Badge>
+                            <p className="text-gray-400 text-sm">
+                              {price.stock} available
+                            </p>
                           </div>
                         </div>
-
-                        <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
-                          <span>
-                            Sold: {price.sold} / {price.stock}
-                          </span>
-                          <span>{soldPercentage.toFixed(1)}%</span>
-                        </div>
-
-                        <div className="w-full bg-gray-700 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full ${
-                              isSoldOut
-                                ? "bg-red-600"
-                                : soldPercentage > 75
-                                ? "bg-yellow-500"
-                                : "bg-green-600"
-                            }`}
-                            style={{
-                              width: `${Math.min(soldPercentage, 100)}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
-            {/* Sidebar */}
+            {/* Right Column - Statistics */}
             <div className="space-y-6">
               {/* Quick Stats */}
-              <Card className="bg-gray-800 border-gray-700">
+              <Card className="bg-gray-900 border-gray-700">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center">
                     <BarChart3 className="h-5 w-5 mr-2" />
-                    Quick Stats
+                    Overview
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Total Revenue</span>
-                    <span className="text-white font-bold">
-                      Rs. {event.totalRevenue.toLocaleString()}
+                    <span className="text-gray-400">Total Tickets</span>
+                    <span className="text-white font-medium">
+                      {analyticsLoading ? (
+                        <Skeleton className="h-5 w-12" />
+                      ) : (
+                        analytics?.totalTicketsSold || 0
+                      )}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Tickets Sold</span>
-                    <span className="text-white font-bold">
-                      {event.totalTicketsSold}
+                    <span className="text-gray-400">Revenue</span>
+                    <span className="text-white font-medium">
+                      {analyticsLoading ? (
+                        <Skeleton className="h-5 w-16" />
+                      ) : (
+                        `$${analytics?.totalRevenue?.toLocaleString() || 0}`
+                      )}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Available</span>
-                    <span className="text-white font-bold">
-                      {availableTickets}
+                    <span className="text-gray-400">Avg. Ticket Price</span>
+                    <span className="text-white font-medium">
+                      {analyticsLoading ? (
+                        <Skeleton className="h-5 w-12" />
+                      ) : (
+                        `$${analytics?.averageTicketPrice?.toFixed(2) || 0}`
+                      )}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Sold Out Categories</span>
-                    <span className="text-white font-bold">
-                      {soldOutCategories}
+                    <span className="text-gray-400">Conversion Rate</span>
+                    <span className="text-white font-medium">
+                      {analyticsLoading ? (
+                        <Skeleton className="h-5 w-12" />
+                      ) : (
+                        `${analytics?.conversionRate?.toFixed(1) || 0}%`
+                      )}
                     </span>
-                  </div>
-
-                  <div className="pt-4 border-t border-gray-700">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-gray-400">Sales Progress</span>
-                      <span className="text-white font-bold">
-                        {(
-                          (event.totalTicketsSold / event.venueCapacity) *
-                          100
-                        ).toFixed(1)}
-                        %
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-700 rounded-full h-2">
-                      <div
-                        className="bg-purple-600 h-2 rounded-full"
-                        style={{
-                          width: `${Math.min(
-                            (event.totalTicketsSold / event.venueCapacity) *
-                              100,
-                            100
-                          )}%`,
-                        }}
-                      />
-                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Actions */}
-              <Card className="bg-gray-800 border-gray-700">
+              {/* Quick Actions */}
+              <Card className="bg-gray-900 border-gray-700">
                 <CardHeader>
-                  <CardTitle className="text-white">Actions</CardTitle>
+                  <CardTitle className="text-white">Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <Button
                     variant="outline"
-                    className="w-full border-gray-600 justify-start"
+                    className="w-full justify-start border-gray-600 hover:bg-gray-800"
+                    onClick={() =>
+                      router.push(`/organizer/events/${event.id}/edit`)
+                    }
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    Download Report
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Event Details
                   </Button>
 
                   <Button
                     variant="outline"
-                    className="w-full border-gray-600 justify-start"
+                    className="w-full justify-start border-gray-600 hover:bg-gray-800"
+                    onClick={() =>
+                      router.push(`/organizer/events/${event.id}/analytics`)
+                    }
                   >
                     <TrendingUp className="h-4 w-4 mr-2" />
                     View Analytics
                   </Button>
 
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full border-red-600 text-red-400 hover:bg-red-600 justify-start"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Event
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="bg-gray-800 border-gray-700">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="text-white">
-                          Are you sure?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="text-gray-300">
-                          This action cannot be undone. This will permanently
-                          delete the event "{event.title}" and all associated
-                          data.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="border-gray-600">
-                          Cancel
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDelete}
-                          disabled={actionLoading === "delete"}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          {actionLoading === "delete"
-                            ? "Deleting..."
-                            : "Delete Event"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start border-gray-600 hover:bg-gray-800"
+                    onClick={handleCopyEventLink}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Event Link
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start border-gray-600 hover:bg-gray-800"
+                    onClick={() =>
+                      router.push(`/organizer/events/${event.id}/tickets`)
+                    }
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Tickets
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Status Card */}
+              <Card className="bg-gray-900 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Event Status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Visibility</span>
+                      {getStatusBadge(event.isPublished || false)}
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Created</span>
+                      <span className="text-white text-sm">
+                        {event.createdAt
+                          ? new Date(event.createdAt).toLocaleDateString()
+                          : "N/A"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Last Updated</span>
+                      <span className="text-white text-sm">
+                        {event.modifiedAt
+                          ? new Date(event.modifiedAt).toLocaleDateString()
+                          : "N/A"}
+                      </span>
+                    </div>
+
+                    <Button
+                      variant={event.isPublished ? "destructive" : "default"}
+                      className="w-full mt-4"
+                      onClick={() => setPublishDialogOpen(true)}
+                      disabled={updateEventMutation.isPending}
+                    >
+                      {updateEventMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : event.isPublished ? (
+                        <XCircle className="h-4 w-4 mr-2" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                      )}
+                      {event.isPublished ? "Unpublish Event" : "Publish Event"}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
           </div>
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+          >
+            <AlertDialogContent className="bg-gray-800 border-gray-600">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-white">
+                  Delete Event
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-400">
+                  Are you sure you want to delete "{event.title}"? This action
+                  cannot be undone. All associated tickets and bookings will
+                  also be deleted.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="bg-gray-700 text-white hover:bg-gray-600">
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  disabled={deleteEventMutation.isPending}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {deleteEventMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete Event"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Publish/Unpublish Confirmation Dialog */}
+          <AlertDialog
+            open={publishDialogOpen}
+            onOpenChange={setPublishDialogOpen}
+          >
+            <AlertDialogContent className="bg-gray-800 border-gray-600">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-white">
+                  {event.isPublished ? "Unpublish" : "Publish"} Event
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-400">
+                  {event.isPublished
+                    ? `Are you sure you want to unpublish "${event.title}"? The event will no longer be visible to customers.`
+                    : `Are you sure you want to publish "${event.title}"? The event will become visible to customers and they can start booking tickets.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="bg-gray-700 text-white hover:bg-gray-600">
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handlePublishToggle}
+                  disabled={updateEventMutation.isPending}
+                  className={
+                    event.isPublished
+                      ? "bg-red-600 hover:bg-red-700"
+                      : "bg-green-600 hover:bg-green-700"
+                  }
+                >
+                  {updateEventMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {event.isPublished ? "Unpublishing..." : "Publishing..."}
+                    </>
+                  ) : (
+                    <>{event.isPublished ? "Unpublish" : "Publish"} Event</>
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </ProtectedRoute>

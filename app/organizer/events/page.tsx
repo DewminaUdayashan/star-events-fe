@@ -57,10 +57,9 @@ import {
   useDeleteEvent,
   OrganizerEventsParams,
 } from "@/lib/services/organizer-hooks";
-import type { OrganizerEvent } from "@/lib/services/organizer.service";
+import { getImageUrl } from "@/lib/utils";
 
 export default function OrganizerEventsPage() {
-  const { user } = useAuth();
   const router = useRouter();
 
   // State for local filtering and UI
@@ -375,14 +374,11 @@ export default function OrganizerEventsPage() {
                     <CardContent className="p-0">
                       <div className="aspect-video relative rounded-t-lg overflow-hidden">
                         <Image
-                          src="/placeholder.svg"
+                          src={getImageUrl(event.imageUrl)}
                           alt={event.title || "Event"}
                           fill
                           className="object-cover"
                         />
-                        <div className="absolute top-2 right-2">
-                          {getStatusBadge(false)}
-                        </div>
                       </div>
 
                       <div className="p-6">

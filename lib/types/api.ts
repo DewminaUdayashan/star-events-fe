@@ -48,6 +48,7 @@ export interface Event {
   isPublished: boolean;
   tickets?: Ticket[];
   prices?: EventPrice[];
+  imageUrl?: string;
 }
 
 export interface EventPrice {

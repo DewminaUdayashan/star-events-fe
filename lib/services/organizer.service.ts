@@ -59,8 +59,13 @@ export interface OrganizerEvent {
   title: string;
   description: string;
   eventDate: string;
+  eventTime: string;
   venueId: string;
   venueName: string;
+  category: string;
+  imageUrl?: string;
+  isPublished: boolean;
+  createdAt: string;
 }
 
 // Parameters for filtering organizer events
@@ -91,15 +96,38 @@ export class OrganizerService {
   }
 
   async getEventById(id: string): Promise<Event> {
-    return apiClient.get<Event>(`/api/organizer/events/${id}`);
+    return apiClient.get<Event>(`/api/events/${id}`);
   }
 
-  async createEvent(event: Partial<Event>): Promise<Event> {
-    return apiClient.post<Event>("/api/organizer/events", event);
+  async createEvent(eventData: FormData | Partial<Event>): Promise<Event> {
+    if (eventData instanceof FormData) {
+      // Handle FormData for multipart/form-data requests
+      return apiClient.post<Event>("/api/organizer/events", eventData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    } else {
+      // Handle regular JSON data (fallback)
+      return apiClient.post<Event>("/api/organizer/events", eventData);
+    }
   }
 
-  async updateEvent(id: string, event: Partial<Event>): Promise<Event> {
-    return apiClient.put<Event>(`/api/organizer/events/${id}`, event);
+  async updateEvent(
+    id: string,
+    eventData: FormData | Partial<Event>
+  ): Promise<Event> {
+    if (eventData instanceof FormData) {
+      // Handle FormData for multipart/form-data requests
+      return apiClient.put<Event>(`/api/organizer/events/${id}`, eventData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    } else {
+      // Handle regular JSON data (fallback)
+      return apiClient.put<Event>(`/api/organizer/events/${id}`, eventData);
+    }
   }
 
   async deleteEvent(id: string): Promise<void> {
