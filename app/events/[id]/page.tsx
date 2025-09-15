@@ -135,7 +135,7 @@ export default function EventDetailsPage() {
 
       // Reset selected tickets after successful booking
       setSelectedTickets({});
-      alert("Tickets booked successfully!");
+      // alert("Tickets booked successfully!"); // Moved to booking page
       window.location.href = `/events/${event.id}/booking`;
     } catch (err) {
       console.error("Booking error:", err);
