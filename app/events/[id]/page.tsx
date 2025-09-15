@@ -31,7 +31,6 @@ import type { EventPrice, BookTicketRequest } from "@/lib/types/api";
 export default function EventDetailsPage() {
   const params = useParams();
   const eventId = params.id as string;
-  const { addItem } = useCart();
   const { user } = useAuth();
 
   const { data: event, isLoading: loading, error } = useEvent(eventId);
