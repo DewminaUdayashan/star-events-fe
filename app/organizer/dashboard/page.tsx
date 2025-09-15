@@ -22,8 +22,10 @@ import Footer from "@/components/Footer";
 
 export default function OrganizerDashboard() {
   const { user, roles } = useAuth();
+  console.log("OrganizerDashboard - User:", user);
+  console.log("OrganizerDashboard - Roles:", roles);
 
-  if (!user || roles.includes("Organizer")) {
+  if (!user || !roles.includes("Organizer")) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -51,7 +53,6 @@ export default function OrganizerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-900">
-
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}

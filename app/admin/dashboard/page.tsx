@@ -26,8 +26,6 @@ export default function AdminDashboard() {
   return (
     <ProtectedRoute requiredRole={["Admin", "Organizer"]}>
       <div className="min-h-screen bg-gray-900">
-        <Navigation />
-
         <main className="max-w-7xl mx-auto px-4 py-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">

@@ -45,11 +45,15 @@ export default function ProtectedRoute({
     }
   };
 
-  console.log("ProtectedRoute - User:", user);
+  console.log("ProtectedRoute - User:", !!user);
   console.log("ProtectedRoute - isLoading:", isLoading);
   console.log("ProtectedRoute - isAuthenticated:", isAuthenticated);
   console.log("ProtectedRoute - roles:", roles);
   console.log("ProtectedRoute - requiredRole:", requiredRole);
+  console.log(
+    "ProtectedRoute - hasRequiredRole check:",
+    hasRequiredRole(roles, requiredRole)
+  );
 
   useEffect(() => {
     if (!isLoading) {
