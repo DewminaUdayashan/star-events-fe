@@ -354,4 +354,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
+stripe listen --forward-to localhost:3000/api/webhook
+
+
 **Built with ❤️ for StarEvents by the development team**

@@ -1,5 +1,7 @@
 import { apiClient } from "../api-client"
 import type { ProcessPaymentRequest, Payment, PaginatedApiResponse } from "../types/api"
+import { loadStripe } from '@stripe/stripe-js'
+
 
 export interface PaymentResponse {
   success: boolean
@@ -56,8 +58,10 @@ export class PaymentService {
     return this.stripe
   }
 
-  async createPaymentIntent(amount: number, currency: string = 'LKR'): Promise<{ clientSecret: string }> {
-    return apiClient.post('/api/Payment/create-intent', { amount, currency })
+  // This is the corrected method. It now correctly calls the backend endpoint
+  // that creates a payment intent using the ticketId.
+  async createPaymentIntent(ticketId: string): Promise<{ clientSecret: string }> {
+    return apiClient.post('/api/Payment/create-payment-intent', { ticketId });
   }
 
   async processPayment(data: ProcessPaymentRequest): Promise<PaymentResponse> {
