@@ -6,22 +6,72 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Download, Calendar, MapPin, Mail, Smartphone } from "lucide-react"
 import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useTicketQRCode } from '@/hooks/useTickets';
+import Image from "next/image";
 
 export default function BookingConfirmationPage() {
   const searchParams = useSearchParams();
-  let ticketId = searchParams.get('ticketId');
-  console.log("BookingConfirmationPage - Initial ticketId from URL:", ticketId);
-  
-  // Fallback to localStorage if ticketId is not in URL
-  if (!ticketId && typeof window !== 'undefined') {
-    console.log("BookingConfirmationPage - ticketId not in URL, checking localStorage.");
-    ticketId = localStorage.getItem('currentBookingTicketId');
-    console.log("BookingConfirmationPage - ticketId from localStorage:", ticketId);
-    // Clear from localStorage after retrieval to prevent stale data
-    localStorage.removeItem('currentBookingTicketId');
-  }
-  const { qrCodeUrl, generateQRCode, loading, error } = useTicketQRCode();
+  const [ticketId, setTicketId] = useState<string | null>(null);
+  const [bookingData, setBookingData] = useState<any>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const { qrCodeUrl, generateQRCode, downloadQRCode, loading, error, ticketCode, paymentStatus } = useTicketQRCode();
+
+  // Initialize ticketId and booking data from URL or localStorage
+  useEffect(() => {
+    const fromUrl = searchParams.get('ticketId');
+    const sessionIdParam = searchParams.get('session_id');
+    
+    if (sessionIdParam) {
+      setSessionId(sessionIdParam);
+    }
+    
+    if (fromUrl) {
+      setTicketId(fromUrl);
+      return;
+    }
+    
+    if (typeof window !== 'undefined') {
+      const fromStorage = localStorage.getItem('currentBookingTicketId');
+      const storedBooking = localStorage.getItem('currentBooking');
+      
+      if (fromStorage) {
+        setTicketId(fromStorage);
+      }
+      
+      if (storedBooking) {
+        try {
+          const parsed = JSON.parse(storedBooking);
+          setBookingData(parsed);
+        } catch (err) {
+          console.warn('Failed to parse stored booking data:', err);
+        }
+      }
+    }
+  }, [searchParams]);
+
+  // Automatically generate QR when ticketId is known, then clear localStorage
+  useEffect(() => {
+    const run = async () => {
+      if (!ticketId) return;
+      try {
+        const url = await generateQRCode(ticketId, sessionId || undefined);
+        if (url && typeof window !== 'undefined') {
+          localStorage.removeItem('currentBookingTicketId');
+          localStorage.removeItem('currentBooking');
+        }
+      } catch {
+        // swallow; error state is handled by hook
+      }
+    };
+    run();
+  }, [ticketId, sessionId, generateQRCode]);
+
+  // Debugging logs
+  console.log("BookingConfirmationPage - ticketId:", ticketId);
+  console.log("BookingConfirmationPage - loading:", loading);
+  console.log("BookingConfirmationPage - error:", error);
+  console.log("BookingConfirmationPage - ticketCode (from hook):", ticketCode);
 
   // Mock booking data - in real app this would come from the booking API
   const bookingId = "SE-" + Math.random().toString(36).substr(2, 9).toUpperCase()
@@ -44,7 +94,7 @@ export default function BookingConfirmationPage() {
             </p>
           </div>
 
-          {/* Booking Details */}
+          {/* Booking Details from stored data */}
           <Card className="bg-gray-800 border-gray-700 mb-6">
             <CardHeader>
               <CardTitle className="text-white flex items-center">
@@ -55,15 +105,26 @@ export default function BookingConfirmationPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-400">Booking ID</p>
-                  <p className="text-white font-mono">{ticketId || bookingId}</p>
+                  <p className="text-sm text-gray-400">Ticket Code</p>
+                  <p className="text-white font-mono text-xl">{ticketCode || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">Booking Date</p>
-                  <p className="text-white">{bookingDate}</p>
+                  <p className="text-sm text-gray-400">Payment Status</p>
+                  <p className="text-white">{paymentStatus || 'Pending'}</p>
                 </div>
+                {bookingData && (
+                  <>
+                    <div>
+                      <p className="text-sm text-gray-400">Quantity</p>
+                      <p className="text-white">{bookingData.quantity}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-400">Total Amount</p>
+                      <p className="text-white">LKR {bookingData.totalAmount?.toFixed(2) || '—'}</p>
+                    </div>
+                  </>
+                )}
               </div>
-
               <div className="flex items-center space-x-2">
                 <Badge className="bg-green-600 hover:bg-green-700">Confirmed</Badge>
                 <Badge variant="outline" className="border-purple-500 text-purple-400">
@@ -72,6 +133,20 @@ export default function BookingConfirmationPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* QR Code Display */}
+          {qrCodeUrl && (
+            <Card className="bg-gray-800 border-gray-700 mb-6">
+              <CardHeader>
+                <CardTitle className="text-white">Your Ticket QR Code</CardTitle>
+              </CardHeader>
+              <CardContent className="flex justify-center p-6">
+                <div className="bg-white p-2 rounded-lg">
+                  <Image src={qrCodeUrl} alt="QR Code" width={200} height={200} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Next Steps */}
           <Card className="bg-gray-800 border-gray-700 mb-6">
@@ -115,23 +190,28 @@ export default function BookingConfirmationPage() {
               className="flex-1 bg-purple-600 hover:bg-purple-700"
               onClick={async () => {
                 if (ticketId) {
-                  const url = await generateQRCode(ticketId);
-                  if (url) {
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `ticket-qrcode-${ticketId}.png`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                  try {
+                    const url = await downloadQRCode(ticketId);
+                    if (url) {
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `ticket-qrcode-${ticketCode || ticketId}.png`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }
+                  } catch (err) {
+                    console.error('Download failed:', err);
+                    // Show user-friendly error message
+                    alert('Failed to download QR code. Please try again or contact support.');
                   }
                 } else {
-                  console.error("Ticket ID not available for QR code generation.");
-                  // Optionally, display a user-friendly error message
+                  alert('No ticket ID available for download.');
                 }
               }}
               disabled={!ticketId || loading}
             >
-              {loading ? 'Generating QR...' : 'Download Tickets'}
+              {loading ? 'Downloading QR...' : 'Download Tickets'}
               <Download className="h-4 w-4 ml-2" />
             </Button>
             <Link href="/my-tickets" className="flex-1">

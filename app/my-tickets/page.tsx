@@ -216,6 +216,7 @@ export default function MyTicketsPage() {
                                 <Button
                                   size="sm"
                                   className="bg-purple-600 hover:bg-purple-700"
+                                 
                                 >
                                   <Download className="h-4 w-4 mr-1" />
                                   Download

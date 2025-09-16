@@ -27,6 +27,8 @@ import { CartProvider } from "@/contexts/CartContext";
 import { getImageUrl } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import type { EventPrice, BookTicketRequest } from "@/lib/types/api";
+import { useCart } from '@/contexts/CartContext'
+
 
 export default function EventDetailsPage() {
   const params = useParams();

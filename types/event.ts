@@ -79,7 +79,6 @@ export interface Booking {
   quantity: number;
   totalAmount: number;
   status: "confirmed" | "pending" | "cancelled";
-  qrCode: string;
   bookingDate: string;
   event: Event;
   ticketType: TicketType;
