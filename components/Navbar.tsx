@@ -41,9 +41,10 @@ export default function Navbar({
   user: propUser,
   cartItemCount = 0,
 }: NavbarProps) {
-  const { user: authUser, logout } = useAuth();
+  const { user: authUser, logout, roles, hasRole } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+  console.log("ROLES", roles);
   // Use auth user if available, otherwise use prop user
   const user = authUser || propUser;
 
@@ -55,24 +56,26 @@ export default function Navbar({
 
   const userMenuItems = user
     ? [
-        ...(user.id?.includes("customer") ||
-        (!user.id?.includes("admin") && !user.id?.includes("organizer"))
+        // Customer items
+        ...(hasRole("Customer")
           ? [
               { href: "/my-tickets", label: "My Tickets", icon: Ticket },
               { href: "/bookings", label: "Booking History", icon: Calendar },
             ]
           : []),
-        ...(user.id?.includes("organizer")
+        // Organizer items
+        ...(hasRole("Organizer")
           ? [
               {
                 href: "/organizer/dashboard",
-                label: "Dashboard",
+                label: "Organizer Dashboard",
                 icon: BarChart3,
               },
               { href: "/organizer/events", label: "My Events", icon: Calendar },
             ]
           : []),
-        ...(user.id?.includes("admin")
+        // Admin items
+        ...(hasRole("Admin")
           ? [
               {
                 href: "/admin/dashboard",
@@ -83,6 +86,7 @@ export default function Navbar({
               { href: "/admin/events", label: "Manage Events", icon: Calendar },
             ]
           : []),
+        // Common items
         { href: "/profile", label: "Profile", icon: User },
         { href: "/settings", label: "Settings", icon: Settings },
       ]
@@ -142,23 +146,36 @@ export default function Navbar({
             </Button>
 
             {/* Cart */}
-            {!user?.id?.includes("admin") &&
-              !user?.id?.includes("organizer") && (
-                <Link href="/cart">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="relative text-gray-300 hover:text-white rounded-2xl"
-                  >
-                    <ShoppingCart className="h-5 w-5" />
-                    {cartItemCount > 0 && (
-                      <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-purple-600 p-0 text-xs">
-                        {cartItemCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </Link>
-              )}
+            {!hasRole("Admin") && !hasRole("Organizer") && (
+              <Link href="/cart">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="relative text-gray-300 hover:text-white rounded-2xl"
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  {cartItemCount > 0 && (
+                    <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-purple-600 p-0 text-xs">
+                      {cartItemCount}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
+            )}
+
+            {/* Organizer Dashboard Button */}
+            {hasRole("Organizer") && (
+              <Link href="/organizer/dashboard">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-purple-500 text-purple-400 hover:bg-purple-600 hover:text-white bg-transparent rounded-2xl"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Dashboard</span>
+                </Button>
+              </Link>
+            )}
 
             {/* User Menu or Auth Buttons */}
             {user ? (
@@ -190,9 +207,9 @@ export default function Navbar({
                           : "User")}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {user.id?.includes("admin")
+                      {hasRole("Admin")
                         ? "Admin"
-                        : user.id?.includes("organizer")
+                        : hasRole("Organizer")
                         ? "Organizer"
                         : "Customer"}
                     </p>

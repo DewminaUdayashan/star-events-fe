@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, MapPin, Users, TrendingUp, ArrowLeft } from "lucide-react";
 import { getEventsByCategory, eventCategories } from "@/data/mockEvents";
+import { useParams } from "next/navigation";
 
 export default function CategoryEventsPage() {
   const params = useParams();
