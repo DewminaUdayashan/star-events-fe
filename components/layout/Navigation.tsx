@@ -1,11 +1,11 @@
-"use client"
+"use client";
 
-import React, { useState } from 'react'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import React, { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +13,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from "@/components/ui/dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -21,79 +21,96 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from '@/components/ui/sheet'
-import { 
-  Star, 
-  Menu, 
-  User, 
-  Calendar, 
-  Ticket, 
-  CreditCard, 
-  BarChart3, 
-  Settings, 
-  LogOut, 
+} from "@/components/ui/sheet";
+import {
+  Star,
+  Menu,
+  User,
+  Calendar,
+  Ticket,
+  CreditCard,
+  BarChart3,
+  Settings,
+  LogOut,
   Bell,
   ShoppingCart,
   Search,
   Plus,
   Shield,
   Users,
-  Home
-} from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-import { useCart } from '@/contexts/CartContext'
-import UserMenu from '@/components/auth/UserMenu'
-import { cn } from '@/lib/utils'
+  Home,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
+import UserMenu from "@/components/auth/UserMenu";
+import { cn } from "@/lib/utils";
 
 interface NavigationProps {
-  className?: string
+  className?: string;
 }
 
 export function Navigation({ className }: NavigationProps) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { user, logout } = useAuth()
-  const { items: cartItems } = useCart()
-  const pathname = usePathname()
-  const router = useRouter()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, logout, roles, hasRole } = useAuth();
+  const { items: cartItems } = useCart();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const handleLogout = async () => {
     try {
-      await logout()
-      router.push('/')
+      await logout();
+      router.push("/");
     } catch (error) {
-      console.error('Logout failed:', error)
+      console.error("Logout failed:", error);
     }
-  }
+  };
 
-  const isActive = (path: string) => pathname === path
+  const isActive = (path: string) => pathname === path;
 
   const navigationItems = [
-    { name: 'Home', href: '/', icon: Home },
-    { name: 'Events', href: '/events', icon: Calendar },
-    { name: 'My Tickets', href: '/my-tickets', icon: Ticket },
-  ]
+    { name: "Home", href: "/", icon: Home },
+    { name: "Events", href: "/events", icon: Calendar },
+    { name: "My Tickets", href: "/my-tickets", icon: Ticket },
+  ];
 
-  const userNavigationItems = user ? [
-    { name: 'Profile', href: '/profile', icon: User },
-    { name: 'My Events', href: '/organizer/dashboard', icon: Calendar, adminOnly: false },
-    { name: 'Admin Dashboard', href: '/admin/dashboard', icon: Shield, adminOnly: true },
-    { name: 'Settings', href: '/settings', icon: Settings },
-  ] : []
+  const userNavigationItems = user
+    ? [
+        { name: "Profile", href: "/profile", icon: User },
+        {
+          name: "My Events",
+          href: "/organizer/dashboard",
+          icon: Calendar,
+          adminOnly: false,
+        },
+        {
+          name: "Admin Dashboard",
+          href: "/admin/dashboard",
+          icon: Shield,
+          adminOnly: true,
+        },
+        { name: "Settings", href: "/settings", icon: Settings },
+      ]
+    : [];
 
   const getInitials = (name?: string) => {
-    if (!name) return 'U'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  }
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   const getUserRole = () => {
-    if (!user) return null
+    if (!user) return null;
     // This would typically come from the user object or JWT token
-    if (user.email?.includes('admin')) return 'Admin'
-    if (user.organizationName) return 'Organizer'
-    return 'Customer'
-  }
+    if (user.email?.includes("admin")) return "Admin";
+    if (user.organizationName) return "Organizer";
+    return "Customer";
+  };
 
-  const userRole = getUserRole()
+  const userRole = getUserRole();
 
   return (
     <nav className={cn("bg-gray-900 border-b border-gray-800", className)}>
@@ -113,7 +130,7 @@ export function Navigation({ className }: NavigationProps) {
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-4">
               {navigationItems.map((item) => {
-                const Icon = item.icon
+                const Icon = item.icon;
                 return (
                   <Link
                     key={item.name}
@@ -128,7 +145,7 @@ export function Navigation({ className }: NavigationProps) {
                     <Icon className="h-4 w-4" />
                     <span>{item.name}</span>
                   </Link>
-                )
+                );
               })}
             </div>
           </div>
@@ -146,8 +163,8 @@ export function Navigation({ className }: NavigationProps) {
                 <Button variant="ghost" size="sm" className="relative">
                   <ShoppingCart className="h-4 w-4" />
                   {cartItems.length > 0 && (
-                    <Badge 
-                      variant="destructive" 
+                    <Badge
+                      variant="destructive"
                       className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
                     >
                       {cartItems.length}
@@ -175,15 +192,31 @@ export function Navigation({ className }: NavigationProps) {
                   </Button>
                 </Link>
                 <Link href="/register">
-                  <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
+                  <Button
+                    size="sm"
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
                     Sign Up
                   </Button>
                 </Link>
               </div>
             )}
 
+            {/* Organizer Dashboard Button */}
+            {user && hasRole("Organizer") && (
+              <Link href="/organizer/dashboard">
+                <Button
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Dashboard</span>
+                </Button>
+              </Link>
+            )}
+
             {/* Create Event Button (for organizers/admins) */}
-            {user && (userRole === 'Organizer' || userRole === 'Admin') && (
+            {user && (hasRole("Organizer") || hasRole("Admin")) && (
               <Link href="/organizer/events/create">
                 <Button size="sm" className="bg-green-600 hover:bg-green-700">
                   <Plus className="h-4 w-4 mr-2" />
@@ -199,18 +232,21 @@ export function Navigation({ className }: NavigationProps) {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="bg-gray-900 border-gray-800">
+              <SheetContent
+                side="right"
+                className="bg-gray-900 border-gray-800"
+              >
                 <SheetHeader>
                   <SheetTitle className="text-white">Menu</SheetTitle>
                   <SheetDescription className="text-gray-400">
                     Navigate through the application
                   </SheetDescription>
                 </SheetHeader>
-                
+
                 <div className="mt-6 space-y-4">
                   {/* Mobile Navigation Items */}
                   {navigationItems.map((item) => {
-                    const Icon = item.icon
+                    const Icon = item.icon;
                     return (
                       <Link
                         key={item.name}
@@ -226,7 +262,7 @@ export function Navigation({ className }: NavigationProps) {
                         <Icon className="h-5 w-5" />
                         <span>{item.name}</span>
                       </Link>
-                    )
+                    );
                   })}
 
                   {/* User-specific items */}
@@ -237,9 +273,9 @@ export function Navigation({ className }: NavigationProps) {
                           Account
                         </p>
                         {userNavigationItems
-                          .filter(item => !item.adminOnly || userRole === 'Admin')
+                          .filter((item) => !item.adminOnly || hasRole("Admin"))
                           .map((item) => {
-                            const Icon = item.icon
+                            const Icon = item.icon;
                             return (
                               <Link
                                 key={item.name}
@@ -250,15 +286,15 @@ export function Navigation({ className }: NavigationProps) {
                                 <Icon className="h-5 w-5" />
                                 <span>{item.name}</span>
                               </Link>
-                            )
+                            );
                           })}
                       </div>
 
                       <div className="border-t border-gray-700 pt-4">
                         <button
                           onClick={() => {
-                            handleLogout()
-                            setIsMobileMenuOpen(false)
+                            handleLogout();
+                            setIsMobileMenuOpen(false);
                           }}
                           className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium text-red-400 hover:bg-gray-800 hover:text-red-300 w-full text-left"
                         >
@@ -272,12 +308,18 @@ export function Navigation({ className }: NavigationProps) {
                   {/* Guest user items */}
                   {!user && (
                     <div className="border-t border-gray-700 pt-4 space-y-2">
-                      <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Link
+                        href="/login"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
                         <Button variant="outline" className="w-full">
                           Sign In
                         </Button>
                       </Link>
-                      <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Link
+                        href="/register"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
                         <Button className="w-full bg-purple-600 hover:bg-purple-700">
                           Sign Up
                         </Button>
@@ -291,5 +333,5 @@ export function Navigation({ className }: NavigationProps) {
         </div>
       </div>
     </nav>
-  )
+  );
 }
