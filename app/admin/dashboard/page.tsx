@@ -110,6 +110,81 @@ export default function AdminDashboard() {
             </p>
           </div>
 
+          {/* Quick Actions */}
+          <Card className="bg-gray-800 border-gray-700 mb-8">
+            <CardHeader>
+              <CardTitle className="text-white">Quick Actions</CardTitle>
+              <CardDescription className="text-gray-400">
+                Manage different aspects of the platform
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Link href="/admin/events">
+                  <Card className="bg-gray-700 border-gray-600 hover:bg-gray-600 transition-colors cursor-pointer">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <Calendar className="h-6 w-6 text-blue-400" />
+                        <div>
+                          <p className="font-medium text-white">Events</p>
+                          <p className="text-sm text-gray-400">
+                            Manage all events
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                <Link href="/admin/organizers">
+                  <Card className="bg-gray-700 border-gray-600 hover:bg-gray-600 transition-colors cursor-pointer">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <Users className="h-6 w-6 text-green-400" />
+                        <div>
+                          <p className="font-medium text-white">Organizers</p>
+                          <p className="text-sm text-gray-400">
+                            Manage organizers
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                <Link href="/admin/venues">
+                  <Card className="bg-gray-700 border-gray-600 hover:bg-gray-600 transition-colors cursor-pointer">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <MapPin className="h-6 w-6 text-purple-400" />
+                        <div>
+                          <p className="font-medium text-white">Venues</p>
+                          <p className="text-sm text-gray-400">Manage venues</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                <Link href="/admin/reports">
+                  <Card className="bg-gray-700 border-gray-600 hover:bg-gray-600 transition-colors cursor-pointer">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <BarChart3 className="h-6 w-6 text-orange-400" />
+                        <div>
+                          <p className="font-medium text-white">Reports</p>
+                          <p className="text-sm text-gray-400">
+                            Analytics & reports
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <Card className="bg-gray-800 border-gray-700">
