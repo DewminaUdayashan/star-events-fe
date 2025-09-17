@@ -14,6 +14,11 @@ import type {
   AdminOrganizerDetail,
   AdminOrganizerStatistics,
   OrganizerFilters,
+  AdminVenue,
+  CreateVenueRequest,
+  UpdateVenueRequest,
+  VenueFilters,
+  VenueEventsCount,
 } from "../types/api";
 
 export interface AdminStats {
@@ -202,20 +207,53 @@ export class AdminService {
   }
 
   // Venues Management
-  async getAllVenues(): Promise<any[]> {
-    return apiClient.get<any[]>("/api/admin/venues");
+  // Venues Management
+  async getAllVenues(): Promise<AdminVenue[]> {
+    return apiClient.get<AdminVenue[]>("/api/venues");
   }
 
-  async createVenue(venue: any): Promise<any> {
-    return apiClient.post<any>("/api/admin/venues", venue);
+  async getVenues(filters?: VenueFilters): Promise<AdminVenue[]> {
+    const params = new URLSearchParams();
+
+    if (filters?.search) {
+      params.append("search", filters.search);
+    }
+    if (filters?.location) {
+      params.append("location", filters.location);
+    }
+    if (filters?.minCapacity) {
+      params.append("minCapacity", filters.minCapacity.toString());
+    }
+    if (filters?.maxCapacity) {
+      params.append("maxCapacity", filters.maxCapacity.toString());
+    }
+
+    const queryString = params.toString();
+    const url = queryString ? `/api/venues?${queryString}` : "/api/venues";
+
+    return apiClient.get<AdminVenue[]>(url);
   }
 
-  async updateVenue(id: string, venue: any): Promise<any> {
-    return apiClient.put<any>(`/api/admin/venues/${id}`, venue);
+  async createVenue(venue: CreateVenueRequest): Promise<AdminVenue> {
+    return apiClient.post<AdminVenue>("/api/venues", venue);
+  }
+
+  async updateVenue(
+    id: string,
+    venue: UpdateVenueRequest
+  ): Promise<AdminVenue> {
+    return apiClient.put<AdminVenue>(`/api/venues/${id}`, venue);
   }
 
   async deleteVenue(id: string): Promise<void> {
-    return apiClient.delete(`/api/admin/venues/${id}`);
+    return apiClient.delete(`/api/venues/${id}`);
+  }
+
+  async getVenueEventsCount(id: string): Promise<number> {
+    const response = await apiClient.get<VenueEventsCount>(
+      `/api/venues/${id}/events-count`
+    );
+    return response.eventCount;
   }
 
   // Organizers Management

@@ -419,6 +419,40 @@ export interface OrganizerFilters {
   hasEvents?: boolean;
 }
 
+// Admin Venue Management Types
+export interface AdminVenue {
+  id: string;
+  name: string;
+  location: string;
+  capacity: number;
+  createdAt: string;
+  modifiedAt: string | null;
+  eventCount: number;
+}
+
+export interface CreateVenueRequest {
+  name: string;
+  location: string;
+  capacity: number;
+}
+
+export interface UpdateVenueRequest {
+  name: string;
+  location: string;
+  capacity: number;
+}
+
+export interface VenueFilters {
+  search?: string;
+  location?: string;
+  minCapacity?: number;
+  maxCapacity?: number;
+}
+
+export interface VenueEventsCount {
+  eventCount: number;
+}
+
 // Health Check Types
 export interface HealthCheck {
   status: "healthy" | "unhealthy" | "degraded";
