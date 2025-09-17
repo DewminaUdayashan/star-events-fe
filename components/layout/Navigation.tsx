@@ -215,6 +215,19 @@ export function Navigation({ className }: NavigationProps) {
               </Link>
             )}
 
+            {/* Admin Dashboard Button */}
+            {user && hasRole("Admin") && (
+              <Link href="/admin/dashboard">
+                <Button
+                  size="sm"
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Shield className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Admin</span>
+                </Button>
+              </Link>
+            )}
+
             {/* Create Event Button (for organizers/admins) */}
             {user && (hasRole("Organizer") || hasRole("Admin")) && (
               <Link href="/organizer/events/create">
