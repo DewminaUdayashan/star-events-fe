@@ -24,7 +24,7 @@ import {
   Loader2,
   CalendarDays,
 } from "lucide-react";
-import { useEvents } from "@/lib/services";
+import { useEvents, useCategories } from "@/lib/services";
 import { useVenues } from "@/lib/services/venues-hooks";
 import type { EventFilters } from "@/lib/types/api";
 import Navbar from "@/components/Navbar";
@@ -33,6 +33,7 @@ import { getImageUrl } from "@/lib/utils";
 export default function EventsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedVenueId, setSelectedVenueId] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [sortBy, setSortBy] = useState("date");
@@ -46,15 +47,20 @@ export default function EventsPage() {
   // Fetch venues for the dropdown
   const { data: venues = [], isLoading: venuesLoading } = useVenues();
 
+  // Fetch categories for the dropdown
+  const { data: categories = [], isLoading: categoriesLoading } =
+    useCategories();
+
   // Prepare filters for the query
   const filters = useMemo<EventFilters>(() => {
     const f: EventFilters = {};
     if (searchQuery.trim()) f.keyword = searchQuery.trim();
     if (selectedVenueId !== "all") f.venueId = selectedVenueId;
+    if (selectedCategory !== "all") f.category = selectedCategory;
     if (fromDate) f.fromDate = fromDate;
     if (toDate) f.toDate = toDate;
     return f;
-  }, [searchQuery, selectedVenueId, fromDate, toDate]);
+  }, [searchQuery, selectedVenueId, selectedCategory, fromDate, toDate]);
 
   // Use TanStack Query to fetch events
   const { data: events = [], isLoading: loading, error } = useEvents(filters);
@@ -163,6 +169,24 @@ export default function EventsPage() {
               </SelectContent>
             </Select>
 
+            {/* Category Filter */}
+            <Select
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
+            >
+              <SelectTrigger className="bg-gray-700 border-gray-600 text-white rounded-2xl">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-800 border-gray-600 rounded-2xl">
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             {/* Sort By */}
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="bg-gray-700 border-gray-600 text-white rounded-2xl">
@@ -211,6 +235,14 @@ export default function EventsPage() {
                 Venue:{" "}
                 {venues.find((v) => v.id === selectedVenueId)?.name ||
                   selectedVenueId}
+              </Badge>
+            )}
+            {selectedCategory !== "all" && (
+              <Badge
+                variant="secondary"
+                className="bg-purple-600/20 text-purple-300 border-purple-500/30"
+              >
+                Category: {selectedCategory}
               </Badge>
             )}
           </div>
@@ -352,6 +384,7 @@ export default function EventsPage() {
               onClick={() => {
                 setSearchQuery("");
                 setSelectedVenueId("all");
+                setSelectedCategory("all");
                 setFromDate(new Date().toISOString().split("T")[0]); // Reset to today
                 setToDate("");
               }}

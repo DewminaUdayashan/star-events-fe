@@ -38,6 +38,10 @@ export class EventsService {
     return this.getEvents({ category });
   }
 
+  async getCategories(): Promise<string[]> {
+    return apiClient.get<string[]>("/api/Events/categories");
+  }
+
   async getTrendingEvents(): Promise<Event[]> {
     // This would typically be a separate endpoint, but using general events for now
     return this.getEvents();
@@ -77,5 +81,14 @@ export const useFeaturedEvents = () => {
   return useQuery({
     queryKey: ["events", "featured"],
     queryFn: () => eventsService.getFeaturedEvents(),
+  });
+};
+
+export const useCategories = () => {
+  return useQuery({
+    queryKey: ["events", "categories"],
+    queryFn: () => eventsService.getCategories(),
+    staleTime: 10 * 60 * 1000, // 10 minutes - categories don't change often
+    gcTime: 30 * 60 * 1000, // 30 minutes
   });
 };

@@ -8,6 +8,7 @@ export {
   useEvent,
   useTrendingEvents,
   useFeaturedEvents,
+  useCategories,
 } from "./events.service";
 export { ticketsService, TicketsService } from "./tickets.service";
 export { paymentService, PaymentService } from "./payment.service";
