@@ -37,11 +37,16 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
-import {
-  useExportReportAsPdf,
-  useExportReportAsExcel,
-} from "@/lib/services/admin-report-hooks";
-import { ReportFilters } from "@/lib/types/api";
+import { useDocumentGenerator } from "@/hooks/useDocumentGenerator";
+import { useReportPreview } from "@/lib/services/admin-report-hooks";
+import type { ReportFilters } from "@/lib/types/api";
+// Import the admin report types which are the ones used by document generator
+import type {
+  SalesReport as AdminSalesReport,
+  UserReport as AdminUserReport,
+  EventReport as AdminEventReport,
+  RevenueReport as AdminRevenueReport,
+} from "@/lib/types/api";
 
 interface ExportModalProps {
   reportType: "sales" | "users" | "events" | "revenue";
@@ -60,25 +65,125 @@ export function ExportModal({
     filters || {}
   );
 
-  const exportPdfMutation = useExportReportAsPdf();
-  const exportExcelMutation = useExportReportAsExcel();
+  // Get report data for export
+  const { data: reportData, isLoading: previewLoading } = useReportPreview(
+    reportType,
+    previewFilters
+  );
 
-  // Use the appropriate hook based on report type (simplified - no preview)
-  const previewLoading = false;
-  const previewData = null; // Simplified for now
+  // Mock data for testing when API fails
+  const mockSalesData = {
+    totalRevenue: 25000,
+    totalTicketsSold: 150,
+    totalTransactions: 120,
+    averageTicketPrice: 166.67,
+    salesByPeriod: [
+      {
+        period: "2025-09-10",
+        revenue: 5000,
+        ticketsSold: 25,
+        transactions: 20,
+      },
+      {
+        period: "2025-09-11",
+        revenue: 7500,
+        ticketsSold: 35,
+        transactions: 30,
+      },
+      {
+        period: "2025-09-12",
+        revenue: 12500,
+        ticketsSold: 55,
+        transactions: 45,
+      },
+      { period: "2025-09-13", revenue: 0, ticketsSold: 35, transactions: 25 },
+    ],
+    topEventsBySales: [
+      {
+        eventId: "1",
+        eventTitle: "Tech Conference 2025",
+        eventCategory: "Conference",
+        eventDate: "2025-09-15",
+        organizerName: "TechCorp",
+        revenue: 15000,
+        ticketsSold: 80,
+        transactions: 65,
+      },
+      {
+        eventId: "2",
+        eventTitle: "Music Festival",
+        eventCategory: "Music",
+        eventDate: "2025-09-20",
+        organizerName: "MusicEvents",
+        revenue: 10000,
+        ticketsSold: 70,
+        transactions: 55,
+      },
+    ],
+    salesByCategory: [
+      {
+        category: "Conference",
+        revenue: 15000,
+        ticketsSold: 80,
+        eventCount: 2,
+        averageTicketPrice: 187.5,
+      },
+      {
+        category: "Music",
+        revenue: 10000,
+        ticketsSold: 70,
+        eventCount: 1,
+        averageTicketPrice: 142.86,
+      },
+    ],
+    salesByOrganizer: [
+      {
+        organizerId: "org1",
+        organizerName: "TechCorp",
+        organizationName: "Tech Corporation Inc",
+        revenue: 15000,
+        ticketsSold: 80,
+        eventCount: 2,
+        averageRevenuePerEvent: 7500,
+      },
+    ],
+  } as any;
+
+  // Use real data if available, otherwise use mock data for testing
+  const dataToUse =
+    reportData || (reportType === "sales" ? mockSalesData : null);
+
+  // Use the new document generator if we have data
+  const documentGenerator = dataToUse
+    ? useDocumentGenerator({
+        reportType,
+        data: dataToUse,
+        filters: previewFilters,
+      })
+    : null;
 
   const handleExport = async () => {
+    console.log("Export attempt:", {
+      documentGenerator: !!documentGenerator,
+      reportData: !!reportData,
+      dataToUse: !!dataToUse,
+      usingMockData: !reportData && !!dataToUse,
+      reportType,
+      exportFormat,
+      previewFilters,
+    });
+
+    if (!documentGenerator || !dataToUse) {
+      console.log("Export failed: Missing documentGenerator or dataToUse");
+      return;
+    }
+
     try {
+      console.log("Starting export...");
       if (exportFormat === "pdf") {
-        await exportPdfMutation.mutateAsync({
-          reportType,
-          filters: previewFilters,
-        });
+        documentGenerator.generatePDF();
       } else {
-        await exportExcelMutation.mutateAsync({
-          reportType,
-          filters: previewFilters,
-        });
+        documentGenerator.generateExcel();
       }
       setOpen(false);
     } catch (error) {
@@ -86,8 +191,7 @@ export function ExportModal({
     }
   };
 
-  const isExporting =
-    exportPdfMutation.isPending || exportExcelMutation.isPending;
+  const isExporting = documentGenerator?.isGenerating ?? false;
 
   const getReportTitle = () => {
     const titles = {

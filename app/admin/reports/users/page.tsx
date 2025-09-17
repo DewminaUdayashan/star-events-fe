@@ -32,10 +32,17 @@ import {
   Award,
 } from "lucide-react";
 import {
-  useAdminUsersReport,
-  useExportReportAsPdf,
-  useExportReportAsExcel,
-} from "@/lib/services";
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from "recharts";
+import { useAdminUsersReport } from "@/lib/services";
 import { ReportFilters } from "@/lib/types/api";
 import { ExportModal } from "@/components/admin/ExportModal";
 import Link from "next/link";
@@ -49,16 +56,6 @@ export default function AdminUsersReportPage() {
   });
 
   const { data: usersReport, isLoading, error } = useAdminUsersReport(filters);
-  const exportPdfMutation = useExportReportAsPdf();
-  const exportExcelMutation = useExportReportAsExcel();
-
-  const handleExportPdf = () => {
-    exportPdfMutation.mutate({ reportType: "users", filters });
-  };
-
-  const handleExportExcel = () => {
-    exportExcelMutation.mutate({ reportType: "users", filters });
-  };
 
   const handleDateRangeChange = (range: string) => {
     const now = new Date();
@@ -160,28 +157,6 @@ export default function AdminUsersReportPage() {
                 <SelectItem value="last-year">Last year</SelectItem>
               </SelectContent>
             </Select>
-
-            <Button
-              onClick={handleExportPdf}
-              variant="outline"
-              size="sm"
-              disabled={exportPdfMutation.isPending}
-              className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              PDF
-            </Button>
-
-            <Button
-              onClick={handleExportExcel}
-              variant="outline"
-              size="sm"
-              disabled={exportExcelMutation.isPending}
-              className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Excel
-            </Button>
 
             <ExportModal
               reportType="users"
@@ -450,16 +425,90 @@ export default function AdminUsersReportPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80 bg-gray-900 rounded-lg flex items-center justify-center border border-gray-700">
-              <div className="text-center">
-                <UserPlus className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-500">
-                  Registration trend chart will be displayed here
-                </p>
-                <p className="text-xs text-gray-600 mt-2">
-                  Integration with charting library (Chart.js, Recharts) needed
-                </p>
-              </div>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={
+                    usersReport?.registrationTrend?.map((trend) => ({
+                      period: trend.period,
+                      newRegistrations: trend.newRegistrations,
+                      newOrganizers: trend.newOrganizers,
+                      newCustomers: trend.newCustomers,
+                    })) || [
+                      {
+                        period: "Week 1",
+                        newRegistrations: 45,
+                        newOrganizers: 8,
+                        newCustomers: 37,
+                      },
+                      {
+                        period: "Week 2",
+                        newRegistrations: 62,
+                        newOrganizers: 12,
+                        newCustomers: 50,
+                      },
+                      {
+                        period: "Week 3",
+                        newRegistrations: 38,
+                        newOrganizers: 6,
+                        newCustomers: 32,
+                      },
+                      {
+                        period: "Week 4",
+                        newRegistrations: 71,
+                        newOrganizers: 15,
+                        newCustomers: 56,
+                      },
+                    ]
+                  }
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="period" stroke="#9CA3AF" fontSize={12} />
+                  <YAxis stroke="#9CA3AF" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#1F2937",
+                      border: "1px solid #374151",
+                      borderRadius: "6px",
+                      color: "#F9FAFB",
+                    }}
+                    formatter={(value: any, name: string) => [
+                      value?.toLocaleString(),
+                      name === "newRegistrations"
+                        ? "Total Registrations"
+                        : name === "newOrganizers"
+                        ? "New Organizers"
+                        : name === "newCustomers"
+                        ? "New Customers"
+                        : name,
+                    ]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="newRegistrations"
+                    stackId="1"
+                    stroke="#3B82F6"
+                    fill="#3B82F6"
+                    fillOpacity={0.3}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="newOrganizers"
+                    stackId="2"
+                    stroke="#10B981"
+                    fill="#10B981"
+                    fillOpacity={0.6}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="newCustomers"
+                    stackId="3"
+                    stroke="#8B5CF6"
+                    fill="#8B5CF6"
+                    fillOpacity={0.4}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>

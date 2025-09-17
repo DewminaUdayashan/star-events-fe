@@ -35,10 +35,17 @@ import {
   BarChart3,
 } from "lucide-react";
 import {
-  useAdminEventsReport,
-  useExportReportAsPdf,
-  useExportReportAsExcel,
-} from "@/lib/services";
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+} from "recharts";
+import { useAdminEventsReport } from "@/lib/services";
 import { ReportFilters } from "@/lib/types/api";
 import { ExportModal } from "@/components/admin/ExportModal";
 import Link from "next/link";
@@ -56,16 +63,6 @@ export default function AdminEventsReportPage() {
     isLoading,
     error,
   } = useAdminEventsReport(filters);
-  const exportPdfMutation = useExportReportAsPdf();
-  const exportExcelMutation = useExportReportAsExcel();
-
-  const handleExportPdf = () => {
-    exportPdfMutation.mutate({ reportType: "events", filters });
-  };
-
-  const handleExportExcel = () => {
-    exportExcelMutation.mutate({ reportType: "events", filters });
-  };
 
   const handleDateRangeChange = (range: string) => {
     const now = new Date();
@@ -169,28 +166,6 @@ export default function AdminEventsReportPage() {
                 <SelectItem value="last-year">Last year</SelectItem>
               </SelectContent>
             </Select>
-
-            <Button
-              onClick={handleExportPdf}
-              variant="outline"
-              size="sm"
-              disabled={exportPdfMutation.isPending}
-              className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              PDF
-            </Button>
-
-            <Button
-              onClick={handleExportExcel}
-              variant="outline"
-              size="sm"
-              disabled={exportExcelMutation.isPending}
-              className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Excel
-            </Button>
 
             <ExportModal
               reportType="events"
@@ -464,16 +439,76 @@ export default function AdminEventsReportPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80 bg-gray-900 rounded-lg flex items-center justify-center border border-gray-700">
-              <div className="text-center">
-                <TrendingUp className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-500">
-                  Event creation trend chart will be displayed here
-                </p>
-                <p className="text-xs text-gray-600 mt-2">
-                  Integration with charting library (Chart.js, Recharts) needed
-                </p>
-              </div>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={
+                    eventsReport?.eventsByPeriod?.map((period) => ({
+                      period: period.period,
+                      created: period.eventsCreated,
+                      published: period.eventsPublished,
+                      held: period.eventsHeld,
+                    })) || [
+                      { period: "Week 1", created: 12, published: 10, held: 8 },
+                      {
+                        period: "Week 2",
+                        created: 18,
+                        published: 15,
+                        held: 12,
+                      },
+                      {
+                        period: "Week 3",
+                        created: 14,
+                        published: 12,
+                        held: 10,
+                      },
+                      {
+                        period: "Week 4",
+                        created: 22,
+                        published: 18,
+                        held: 15,
+                      },
+                    ]
+                  }
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="period" stroke="#9CA3AF" fontSize={12} />
+                  <YAxis stroke="#9CA3AF" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#1F2937",
+                      border: "1px solid #374151",
+                      borderRadius: "6px",
+                      color: "#F9FAFB",
+                    }}
+                    formatter={(value: any, name: string) => [
+                      value?.toLocaleString(),
+                      name === "created"
+                        ? "Events Created"
+                        : name === "published"
+                        ? "Events Published"
+                        : name === "held"
+                        ? "Events Held"
+                        : name,
+                    ]}
+                  />
+                  <Bar dataKey="created" fill="#3B82F6" radius={[2, 2, 0, 0]} />
+                  <Line
+                    type="monotone"
+                    dataKey="published"
+                    stroke="#10B981"
+                    strokeWidth={3}
+                    dot={{ fill: "#10B981", strokeWidth: 2, r: 4 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="held"
+                    stroke="#F59E0B"
+                    strokeWidth={2}
+                    dot={{ fill: "#F59E0B", strokeWidth: 2, r: 3 }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>

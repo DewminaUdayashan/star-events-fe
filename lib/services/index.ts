@@ -34,8 +34,6 @@ export {
   useAdminUsersReport,
   useAdminEventsReport,
   useAdminRevenueReport,
-  useExportReportAsPdf,
-  useExportReportAsExcel,
   useRefreshAllReports,
   useReportPreview,
 } from "./admin-report-hooks";

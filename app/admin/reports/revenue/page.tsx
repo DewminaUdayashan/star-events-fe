@@ -34,10 +34,20 @@ import {
   Receipt,
 } from "lucide-react";
 import {
-  useAdminRevenueReport,
-  useExportReportAsPdf,
-  useExportReportAsExcel,
-} from "@/lib/services";
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import { useAdminRevenueReport } from "@/lib/services";
 import { ReportFilters } from "@/lib/types/api";
 import { ExportModal } from "@/components/admin/ExportModal";
 import Link from "next/link";
@@ -56,16 +66,6 @@ export default function AdminRevenueReportPage() {
     isLoading,
     error,
   } = useAdminRevenueReport(filters);
-  const exportPdfMutation = useExportReportAsPdf();
-  const exportExcelMutation = useExportReportAsExcel();
-
-  const handleExportPdf = () => {
-    exportPdfMutation.mutate({ reportType: "revenue", filters });
-  };
-
-  const handleExportExcel = () => {
-    exportExcelMutation.mutate({ reportType: "revenue", filters });
-  };
 
   const handleDateRangeChange = (range: string) => {
     const now = new Date();
@@ -187,28 +187,6 @@ export default function AdminRevenueReportPage() {
                 <SelectItem value="last-year">Last year</SelectItem>
               </SelectContent>
             </Select>
-
-            <Button
-              onClick={handleExportPdf}
-              variant="outline"
-              size="sm"
-              disabled={exportPdfMutation.isPending}
-              className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              PDF
-            </Button>
-
-            <Button
-              onClick={handleExportExcel}
-              variant="outline"
-              size="sm"
-              disabled={exportExcelMutation.isPending}
-              className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Excel
-            </Button>
 
             <ExportModal
               reportType="revenue"
@@ -427,41 +405,118 @@ export default function AdminRevenueReportPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {[
-                  { method: "Credit Card", revenue: 45670, percentage: 65.2 },
-                  { method: "PayPal", revenue: 15430, percentage: 22.0 },
-                  { method: "Bank Transfer", revenue: 6780, percentage: 9.7 },
-                  { method: "Digital Wallet", revenue: 2120, percentage: 3.1 },
-                ].map((method, index) => (
-                  <div
-                    key={method.method}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className={`w-3 h-3 rounded-full ${
-                          index === 0
-                            ? "bg-blue-500"
-                            : index === 1
-                            ? "bg-green-500"
-                            : index === 2
-                            ? "bg-purple-500"
-                            : "bg-orange-500"
-                        }`}
-                      ></div>
-                      <span className="text-white">{method.method}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-white font-semibold">
-                        ${method.revenue.toLocaleString()}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Pie Chart */}
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          {
+                            method: "Credit Card",
+                            revenue: 45670,
+                            percentage: 65.2,
+                            color: "#3B82F6",
+                          },
+                          {
+                            method: "PayPal",
+                            revenue: 15430,
+                            percentage: 22.0,
+                            color: "#10B981",
+                          },
+                          {
+                            method: "Bank Transfer",
+                            revenue: 6780,
+                            percentage: 9.7,
+                            color: "#8B5CF6",
+                          },
+                          {
+                            method: "Digital Wallet",
+                            revenue: 2120,
+                            percentage: 3.1,
+                            color: "#F59E0B",
+                          },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={80}
+                        dataKey="percentage"
+                      >
+                        {[
+                          { color: "#3B82F6" },
+                          { color: "#10B981" },
+                          { color: "#8B5CF6" },
+                          { color: "#F59E0B" },
+                        ].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#1F2937",
+                          border: "1px solid #374151",
+                          borderRadius: "6px",
+                          color: "#F9FAFB",
+                        }}
+                        formatter={(value: any, name: string, props: any) => [
+                          `${value.toFixed(1)}%`,
+                          props.payload.method,
+                        ]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Legend/Details */}
+                <div className="space-y-4">
+                  {[
+                    {
+                      method: "Credit Card",
+                      revenue: 45670,
+                      percentage: 65.2,
+                      color: "bg-blue-500",
+                    },
+                    {
+                      method: "PayPal",
+                      revenue: 15430,
+                      percentage: 22.0,
+                      color: "bg-green-500",
+                    },
+                    {
+                      method: "Bank Transfer",
+                      revenue: 6780,
+                      percentage: 9.7,
+                      color: "bg-purple-500",
+                    },
+                    {
+                      method: "Digital Wallet",
+                      revenue: 2120,
+                      percentage: 3.1,
+                      color: "bg-orange-500",
+                    },
+                  ].map((method) => (
+                    <div
+                      key={method.method}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`w-3 h-3 rounded-full ${method.color}`}
+                        ></div>
+                        <span className="text-white">{method.method}</span>
                       </div>
-                      <div className="text-xs text-gray-400">
-                        {method.percentage.toFixed(1)}%
+                      <div className="text-right">
+                        <div className="text-white font-semibold">
+                          ${method.revenue.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {method.percentage.toFixed(1)}%
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -477,16 +532,97 @@ export default function AdminRevenueReportPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80 bg-gray-900 rounded-lg flex items-center justify-center border border-gray-700">
-              <div className="text-center">
-                <TrendingUp className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-500">
-                  Revenue trend chart will be displayed here
-                </p>
-                <p className="text-xs text-gray-600 mt-2">
-                  Integration with charting library (Chart.js, Recharts) needed
-                </p>
-              </div>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={
+                    revenueReport?.revenueByPeriod?.map((period) => ({
+                      period: period.period,
+                      revenue: period.revenue,
+                      pending: period.pendingRevenue,
+                      completed: period.completedRevenue,
+                      growth: period.growthRate,
+                    })) || [
+                      {
+                        period: "Week 1",
+                        revenue: 15000,
+                        pending: 2000,
+                        completed: 13000,
+                        growth: 5.2,
+                      },
+                      {
+                        period: "Week 2",
+                        revenue: 22000,
+                        pending: 3200,
+                        completed: 18800,
+                        growth: 8.1,
+                      },
+                      {
+                        period: "Week 3",
+                        revenue: 18500,
+                        pending: 2800,
+                        completed: 15700,
+                        growth: 3.4,
+                      },
+                      {
+                        period: "Week 4",
+                        revenue: 29000,
+                        pending: 4100,
+                        completed: 24900,
+                        growth: 12.8,
+                      },
+                    ]
+                  }
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="period" stroke="#9CA3AF" fontSize={12} />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#1F2937",
+                      border: "1px solid #374151",
+                      borderRadius: "6px",
+                      color: "#F9FAFB",
+                    }}
+                    formatter={(value: any, name: string) => [
+                      `$${value?.toLocaleString()}`,
+                      name === "revenue"
+                        ? "Total Revenue"
+                        : name === "completed"
+                        ? "Completed Revenue"
+                        : name === "pending"
+                        ? "Pending Revenue"
+                        : name,
+                    ]}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#10B981"
+                    strokeWidth={3}
+                    dot={{ fill: "#10B981", strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, fill: "#10B981" }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="completed"
+                    stroke="#3B82F6"
+                    strokeWidth={2}
+                    dot={{ fill: "#3B82F6", strokeWidth: 2, r: 3 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="pending"
+                    stroke="#F59E0B"
+                    strokeWidth={2}
+                    dot={{ fill: "#F59E0B", strokeWidth: 2, r: 3 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>

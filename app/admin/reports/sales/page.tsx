@@ -28,11 +28,7 @@ import {
   DollarSign,
   Ticket,
 } from "lucide-react";
-import {
-  useAdminSalesReport,
-  useExportReportAsPdf,
-  useExportReportAsExcel,
-} from "@/lib/services";
+import { useAdminSalesReport } from "@/lib/services";
 import { ReportFilters } from "@/lib/types/api";
 import { ExportModal } from "@/components/admin/ExportModal";
 import Link from "next/link";
@@ -47,16 +43,6 @@ export default function AdminSalesReportPage() {
   });
 
   const { data: salesReport, isLoading, error } = useAdminSalesReport(filters);
-  const exportPdfMutation = useExportReportAsPdf();
-  const exportExcelMutation = useExportReportAsExcel();
-
-  const handleExportPdf = () => {
-    exportPdfMutation.mutate({ reportType: "sales", filters });
-  };
-
-  const handleExportExcel = () => {
-    exportExcelMutation.mutate({ reportType: "sales", filters });
-  };
 
   const handleDateRangeChange = (range: string) => {
     const now = new Date();
@@ -176,28 +162,6 @@ export default function AdminSalesReportPage() {
                 <SelectItem value="last-year">Last year</SelectItem>
               </SelectContent>
             </Select>
-
-            <Button
-              onClick={handleExportPdf}
-              variant="outline"
-              size="sm"
-              disabled={exportPdfMutation.isPending}
-              className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              PDF
-            </Button>
-
-            <Button
-              onClick={handleExportExcel}
-              variant="outline"
-              size="sm"
-              disabled={exportExcelMutation.isPending}
-              className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Excel
-            </Button>
 
             <ExportModal
               reportType="sales"
