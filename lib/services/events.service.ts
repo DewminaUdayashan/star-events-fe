@@ -9,10 +9,16 @@ export class EventsService {
     if (filters?.fromDate) params.append("fromDate", filters.fromDate);
     if (filters?.toDate) params.append("toDate", filters.toDate);
     if (filters?.venue) params.append("venue", filters.venue);
+    if (filters?.venueId) params.append("venueId", filters.venueId);
     if (filters?.keyword) params.append("keyword", filters.keyword);
+    if (filters?.category) params.append("category", filters.category);
+    if (filters?.minPrice)
+      params.append("minPrice", filters.minPrice.toString());
+    if (filters?.maxPrice)
+      params.append("maxPrice", filters.maxPrice.toString());
 
     const queryString = params.toString();
-    const url = "/api/Events";
+    const url = queryString ? `/api/Events?${queryString}` : "/api/Events";
 
     return apiClient.get<Event[]>(url);
   }
@@ -30,6 +36,10 @@ export class EventsService {
 
   async getEventsByCategory(category: string): Promise<Event[]> {
     return this.getEvents({ category });
+  }
+
+  async getCategories(): Promise<string[]> {
+    return apiClient.get<string[]>("/api/Events/categories");
   }
 
   async getTrendingEvents(): Promise<Event[]> {
@@ -71,5 +81,14 @@ export const useFeaturedEvents = () => {
   return useQuery({
     queryKey: ["events", "featured"],
     queryFn: () => eventsService.getFeaturedEvents(),
+  });
+};
+
+export const useCategories = () => {
+  return useQuery({
+    queryKey: ["events", "categories"],
+    queryFn: () => eventsService.getCategories(),
+    staleTime: 10 * 60 * 1000, // 10 minutes - categories don't change often
+    gcTime: 30 * 60 * 1000, // 30 minutes
   });
 };

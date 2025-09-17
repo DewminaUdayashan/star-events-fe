@@ -39,7 +39,9 @@ export class VenuesService {
       queryParams.append("pageSize", params.pageSize.toString());
 
     const queryString = queryParams.toString();
-    const url = queryString ? `/api/venues?${queryString}` : "/api/venues";
+    const url = queryString
+      ? `/api/public/venues?${queryString}`
+      : "/api/public/venues";
 
     return apiClient.get<Venue[]>(url);
   }
