@@ -74,7 +74,6 @@ export default function AdminVenuesPage() {
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedVenue, setSelectedVenue] = useState<AdminVenue | null>(null);
 
   // Form states
@@ -196,26 +195,6 @@ export default function AdminVenuesPage() {
     }
   };
 
-  const handleDeleteVenue = async () => {
-    if (!selectedVenue) return;
-
-    try {
-      await deleteMutation.mutateAsync(selectedVenue.id);
-      toast({
-        title: "Success",
-        description: "Venue deleted successfully.",
-      });
-      setDeleteDialogOpen(false);
-      setSelectedVenue(null);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete venue. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const openEditDialog = (venue: AdminVenue) => {
     setSelectedVenue(venue);
     setVenueForm({
@@ -224,11 +203,6 @@ export default function AdminVenuesPage() {
       capacity: venue.capacity,
     });
     setEditDialogOpen(true);
-  };
-
-  const openDeleteDialog = (venue: AdminVenue) => {
-    setSelectedVenue(venue);
-    setDeleteDialogOpen(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -599,18 +573,6 @@ export default function AdminVenuesPage() {
                                 <Edit className="h-4 w-4 mr-1" />
                                 Edit
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  openDeleteDialog(venue as AdminVenue)
-                                }
-                                className="border-red-600 text-red-400 hover:bg-red-700 hover:text-white"
-                                disabled={venue.eventCount > 0}
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete
-                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -694,48 +656,6 @@ export default function AdminVenuesPage() {
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   {updateMutation.isPending ? "Updating..." : "Update Venue"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* Delete Dialog */}
-          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-            <DialogContent className="bg-gray-800 border-gray-700 text-white">
-              <DialogHeader>
-                <DialogTitle>Delete Venue</DialogTitle>
-                <DialogDescription className="text-gray-400">
-                  Are you sure you want to delete this venue? This action cannot
-                  be undone.
-                </DialogDescription>
-              </DialogHeader>
-              {selectedVenue && selectedVenue.eventCount > 0 && (
-                <div className="flex items-center gap-2 p-4 bg-red-900/20 border border-red-800 rounded-lg">
-                  <AlertCircle className="h-4 w-4 text-red-400" />
-                  <span className="text-sm text-red-300">
-                    This venue has {selectedVenue.eventCount} active events and
-                    cannot be deleted.
-                  </span>
-                </div>
-              )}
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setDeleteDialogOpen(false)}
-                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteVenue}
-                  disabled={
-                    deleteMutation.isPending ||
-                    (selectedVenue?.eventCount ?? 0) > 0
-                  }
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  {deleteMutation.isPending ? "Deleting..." : "Delete"}
                 </Button>
               </DialogFooter>
             </DialogContent>
