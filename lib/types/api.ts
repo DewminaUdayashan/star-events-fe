@@ -153,6 +153,44 @@ export interface EventFilters {
   maxPrice?: number;
 }
 
+// Admin specific types
+export interface AdminEvent {
+  id: string;
+  title: string;
+  description?: string;
+  eventDate: string;
+  eventTime: string;
+  category?: string;
+  image?: string;
+  imageUrl?: string;
+  isPublished: boolean;
+  venueId: string;
+  venueName: string;
+  organizerId: string;
+  organizerName: string;
+  organizerEmail: string;
+  organizationName?: string;
+  createdAt: string;
+  modifiedAt?: string;
+}
+
+export interface AdminEventStatistics {
+  totalEvents: number;
+  publishedEvents: number;
+  unpublishedEvents: number;
+  upcomingEvents: number;
+  pastEvents: number;
+  eventsByCategory: Array<{
+    category: string;
+    count: number;
+  }>;
+  topOrganizers: Array<{
+    organizerId: string;
+    organizerName: string;
+    eventCount: number;
+  }>;
+}
+
 export interface PaginationParams {
   page?: number;
   pageSize?: number;

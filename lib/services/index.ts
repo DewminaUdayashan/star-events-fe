@@ -14,6 +14,7 @@ export { ticketsService, TicketsService } from "./tickets.service";
 export { paymentService, PaymentService } from "./payment.service";
 export { organizerService, OrganizerService } from "./organizer.service";
 export { adminService, AdminService } from "./admin.service";
+export { useAdminEvents, useAdminEventStatistics } from "./admin-hooks";
 export { qrService, QRService } from "./qr.service";
 export { healthService, HealthService } from "./health.service";
 export { venuesService, VenuesService } from "./venues.service";
