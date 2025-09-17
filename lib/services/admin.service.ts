@@ -66,6 +66,14 @@ export class AdminService {
     return apiClient.get<AdminEventStatistics>("/api/admin/events/statistics");
   }
 
+  async getAdminEventById(id: string): Promise<AdminEvent> {
+    return apiClient.get<AdminEvent>(`/api/admin/events/${id}`);
+  }
+
+  async publishEvent(id: string, publish: boolean): Promise<void> {
+    return apiClient.put(`/api/admin/events/${id}/publish`, publish);
+  }
+
   // Legacy Events Management (keeping for backward compatibility)
   async getAllEvents(params?: {
     page?: number;

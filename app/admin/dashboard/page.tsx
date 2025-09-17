@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { Navigation } from "@/components/layout/Navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
@@ -341,117 +342,116 @@ export default function AdminDashboard() {
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                   {events.map((event) => (
-                    <Card
-                      key={event.id}
-                      className="bg-gray-700 border-gray-600"
-                    >
-                      <CardContent className="p-4">
-                        {/* Event Image */}
-                        {event.imageUrl && (
-                          <div className="relative h-40 mb-4 rounded-lg overflow-hidden">
-                            <img
-                              src={getImageUrl(event.imageUrl)}
-                              alt={event.title}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src =
-                                  "/placeholder.jpg";
-                              }}
-                            />
-                            <div className="absolute top-2 right-2">
-                              <Badge
-                                variant={
-                                  event.isPublished ? "default" : "secondary"
-                                }
-                                className={
-                                  event.isPublished
-                                    ? "bg-green-600 text-white"
-                                    : "bg-gray-600 text-gray-300"
-                                }
-                              >
-                                {event.isPublished ? (
-                                  <Eye className="h-3 w-3 mr-1" />
-                                ) : (
-                                  <EyeOff className="h-3 w-3 mr-1" />
-                                )}
-                                {event.isPublished ? "Published" : "Draft"}
-                              </Badge>
+                    <Link key={event.id} href={`/admin/events/${event.id}`}>
+                      <Card className="bg-gray-700 border-gray-600 hover:border-purple-500 transition-colors cursor-pointer">
+                        <CardContent className="p-4">
+                          {/* Event Image */}
+                          {event.imageUrl && (
+                            <div className="relative h-40 mb-4 rounded-lg overflow-hidden">
+                              <img
+                                src={getImageUrl(event.imageUrl)}
+                                alt={event.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    "/placeholder.jpg";
+                                }}
+                              />
+                              <div className="absolute top-2 right-2">
+                                <Badge
+                                  variant={
+                                    event.isPublished ? "default" : "secondary"
+                                  }
+                                  className={
+                                    event.isPublished
+                                      ? "bg-green-600 text-white"
+                                      : "bg-gray-600 text-gray-300"
+                                  }
+                                >
+                                  {event.isPublished ? (
+                                    <Eye className="h-3 w-3 mr-1" />
+                                  ) : (
+                                    <EyeOff className="h-3 w-3 mr-1" />
+                                  )}
+                                  {event.isPublished ? "Published" : "Draft"}
+                                </Badge>
+                              </div>
                             </div>
-                          </div>
-                        )}
-
-                        {/* Event Details */}
-                        <div className="space-y-3">
-                          <div>
-                            <h3 className="font-semibold text-white text-lg mb-1">
-                              {event.title}
-                            </h3>
-                            {event.category && (
-                              <Badge
-                                variant="outline"
-                                className="text-xs border-purple-500 text-purple-300"
-                              >
-                                {event.category}
-                              </Badge>
-                            )}
-                          </div>
-
-                          {event.description && (
-                            <p className="text-gray-300 text-sm line-clamp-2">
-                              {event.description}
-                            </p>
                           )}
 
-                          {/* Event Date & Time */}
-                          <div className="flex items-center text-sm text-gray-400">
-                            <Calendar className="h-4 w-4 mr-2" />
-                            <span>{formatDate(event.eventDate)}</span>
-                            <Clock className="h-4 w-4 ml-4 mr-2" />
-                            <span>{formatTime(event.eventTime)}</span>
-                          </div>
-
-                          {/* Venue */}
-                          <div className="flex items-center text-sm text-gray-400">
-                            <MapPin className="h-4 w-4 mr-2" />
-                            <span>{event.venueName}</span>
-                          </div>
-
-                          {/* Organizer Information */}
-                          <div className="bg-gray-600 rounded-lg p-3 space-y-2">
-                            <h4 className="text-sm font-medium text-white mb-2">
-                              Organizer
-                            </h4>
-
-                            <div className="flex items-center text-sm text-gray-300">
-                              <User className="h-4 w-4 mr-2 text-blue-400" />
-                              <span>{event.organizerName}</span>
+                          {/* Event Details */}
+                          <div className="space-y-3">
+                            <div>
+                              <h3 className="font-semibold text-white text-lg mb-1">
+                                {event.title}
+                              </h3>
+                              {event.category && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs border-purple-500 text-purple-300"
+                                >
+                                  {event.category}
+                                </Badge>
+                              )}
                             </div>
 
-                            <div className="flex items-center text-sm text-gray-300">
-                              <Mail className="h-4 w-4 mr-2 text-green-400" />
-                              <span>{event.organizerEmail}</span>
+                            {event.description && (
+                              <p className="text-gray-300 text-sm line-clamp-2">
+                                {event.description}
+                              </p>
+                            )}
+
+                            {/* Event Date & Time */}
+                            <div className="flex items-center text-sm text-gray-400">
+                              <Calendar className="h-4 w-4 mr-2" />
+                              <span>{formatDate(event.eventDate)}</span>
+                              <Clock className="h-4 w-4 ml-4 mr-2" />
+                              <span>{formatTime(event.eventTime)}</span>
                             </div>
 
-                            {event.organizationName && (
+                            {/* Venue */}
+                            <div className="flex items-center text-sm text-gray-400">
+                              <MapPin className="h-4 w-4 mr-2" />
+                              <span>{event.venueName}</span>
+                            </div>
+
+                            {/* Organizer Information */}
+                            <div className="bg-gray-600 rounded-lg p-3 space-y-2">
+                              <h4 className="text-sm font-medium text-white mb-2">
+                                Organizer
+                              </h4>
+
                               <div className="flex items-center text-sm text-gray-300">
-                                <Building className="h-4 w-4 mr-2 text-purple-400" />
-                                <span>{event.organizationName}</span>
+                                <User className="h-4 w-4 mr-2 text-blue-400" />
+                                <span>{event.organizerName}</span>
                               </div>
-                            )}
-                          </div>
 
-                          {/* Timestamps */}
-                          <div className="text-xs text-gray-500 pt-2 border-t border-gray-600">
-                            <div>Created: {formatDate(event.createdAt)}</div>
-                            {event.modifiedAt && (
-                              <div>
-                                Modified: {formatDate(event.modifiedAt)}
+                              <div className="flex items-center text-sm text-gray-300">
+                                <Mail className="h-4 w-4 mr-2 text-green-400" />
+                                <span>{event.organizerEmail}</span>
                               </div>
-                            )}
+
+                              {event.organizationName && (
+                                <div className="flex items-center text-sm text-gray-300">
+                                  <Building className="h-4 w-4 mr-2 text-purple-400" />
+                                  <span>{event.organizationName}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Timestamps */}
+                            <div className="text-xs text-gray-500 pt-2 border-t border-gray-600">
+                              <div>Created: {formatDate(event.createdAt)}</div>
+                              {event.modifiedAt && (
+                                <div>
+                                  Modified: {formatDate(event.modifiedAt)}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    </Link>
                   ))}
                 </div>
               )}
