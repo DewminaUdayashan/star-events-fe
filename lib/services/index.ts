@@ -22,6 +22,12 @@ export {
   useAdminOrganizers,
   useAdminOrganizer,
   useAdminOrganizerStatistics,
+  useVenues as useAdminVenues,
+  useAllVenues,
+  useVenueEventsCount,
+  useCreateVenue as useCreateAdminVenue,
+  useUpdateVenue as useUpdateAdminVenue,
+  useDeleteVenue as useDeleteAdminVenue,
 } from "./admin-hooks";
 export { qrService, QRService } from "./qr.service";
 export { healthService, HealthService } from "./health.service";

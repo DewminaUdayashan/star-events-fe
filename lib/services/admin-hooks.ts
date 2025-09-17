@@ -8,6 +8,10 @@ import type {
   AdminOrganizerDetail,
   AdminOrganizerStatistics,
   OrganizerFilters,
+  AdminVenue,
+  CreateVenueRequest,
+  UpdateVenueRequest,
+  VenueFilters,
 } from "../types/api";
 
 // Query Keys
@@ -22,6 +26,12 @@ export const adminKeys = {
     [...adminKeys.organizers(), "list", filters] as const,
   organizerDetail: (id: string) =>
     [...adminKeys.organizers(), "detail", id] as const,
+  venues: () => [...adminKeys.all, "venues"] as const,
+  venuesList: (filters?: VenueFilters) =>
+    [...adminKeys.venues(), "list", filters] as const,
+  venueDetail: (id: string) => [...adminKeys.venues(), "detail", id] as const,
+  venueEventsCount: (id: string) =>
+    [...adminKeys.venues(), "events-count", id] as const,
   statistics: () => [...adminKeys.all, "statistics"] as const,
   eventStatistics: () => [...adminKeys.statistics(), "events"] as const,
   organizerStatistics: () => [...adminKeys.statistics(), "organizers"] as const,
@@ -99,5 +109,73 @@ export function useAdminOrganizerStatistics() {
     queryFn: () => adminService.getAdminOrganizerStatistics(),
     staleTime: 5 * 60 * 1000, // 5 minutes - statistics don't change frequently
     gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+// Admin Venues Hooks
+export function useVenues(filters?: VenueFilters) {
+  return useQuery({
+    queryKey: adminKeys.venuesList(filters),
+    queryFn: () => adminService.getVenues(filters),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useAllVenues() {
+  return useQuery({
+    queryKey: adminKeys.venues(),
+    queryFn: () => adminService.getAllVenues(),
+    staleTime: 5 * 60 * 1000, // 5 minutes - venues don't change frequently
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+export function useVenueEventsCount(id: string) {
+  return useQuery({
+    queryKey: adminKeys.venueEventsCount(id),
+    queryFn: () => adminService.getVenueEventsCount(id),
+    enabled: !!id,
+    staleTime: 1 * 60 * 1000, // 1 minute - event counts may change more frequently
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useCreateVenue() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (venue: CreateVenueRequest) => adminService.createVenue(venue),
+    onSuccess: () => {
+      // Invalidate and refetch venues list
+      queryClient.invalidateQueries({ queryKey: adminKeys.venues() });
+    },
+  });
+}
+
+export function useUpdateVenue() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, venue }: { id: string; venue: UpdateVenueRequest }) =>
+      adminService.updateVenue(id, venue),
+    onSuccess: (_, { id }) => {
+      // Invalidate and refetch venue details
+      queryClient.invalidateQueries({ queryKey: adminKeys.venueDetail(id) });
+      // Invalidate venues list to update the list view
+      queryClient.invalidateQueries({ queryKey: adminKeys.venues() });
+    },
+  });
+}
+
+export function useDeleteVenue() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => adminService.deleteVenue(id),
+    onSuccess: () => {
+      // Invalidate and refetch venues list
+      queryClient.invalidateQueries({ queryKey: adminKeys.venues() });
+    },
   });
 }
