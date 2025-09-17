@@ -4,6 +4,10 @@ import type {
   EventFilters,
   AdminEvent,
   AdminEventStatistics,
+  AdminOrganizer,
+  AdminOrganizerDetail,
+  AdminOrganizerStatistics,
+  OrganizerFilters,
 } from "../types/api";
 
 // Query Keys
@@ -13,8 +17,14 @@ export const adminKeys = {
   eventsList: (filters?: EventFilters) =>
     [...adminKeys.events(), "list", filters] as const,
   eventDetail: (id: string) => [...adminKeys.events(), "detail", id] as const,
+  organizers: () => [...adminKeys.all, "organizers"] as const,
+  organizersList: (filters?: OrganizerFilters) =>
+    [...adminKeys.organizers(), "list", filters] as const,
+  organizerDetail: (id: string) =>
+    [...adminKeys.organizers(), "detail", id] as const,
   statistics: () => [...adminKeys.all, "statistics"] as const,
   eventStatistics: () => [...adminKeys.statistics(), "events"] as const,
+  organizerStatistics: () => [...adminKeys.statistics(), "organizers"] as const,
 };
 
 // Admin Events Hooks
@@ -60,5 +70,34 @@ export function usePublishEvent() {
       // Invalidate statistics
       queryClient.invalidateQueries({ queryKey: adminKeys.eventStatistics() });
     },
+  });
+}
+
+// Admin Organizers Hooks
+export function useAdminOrganizers(filters?: OrganizerFilters) {
+  return useQuery({
+    queryKey: adminKeys.organizersList(filters),
+    queryFn: () => adminService.getAdminOrganizers(filters),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useAdminOrganizer(id: string) {
+  return useQuery({
+    queryKey: adminKeys.organizerDetail(id),
+    queryFn: () => adminService.getAdminOrganizerById(id),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useAdminOrganizerStatistics() {
+  return useQuery({
+    queryKey: adminKeys.organizerStatistics(),
+    queryFn: () => adminService.getAdminOrganizerStatistics(),
+    staleTime: 5 * 60 * 1000, // 5 minutes - statistics don't change frequently
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 }

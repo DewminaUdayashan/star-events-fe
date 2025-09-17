@@ -334,6 +334,91 @@ export interface PaginatedApiResponse<T> {
   hasPreviousPage: boolean;
 }
 
+// Admin Organizer Types
+export interface AdminOrganizer {
+  id: string;
+  fullName: string;
+  email: string;
+  userName: string;
+  phoneNumber?: string;
+  address?: string;
+  dateOfBirth?: string;
+  organizationName?: string;
+  organizationContact?: string;
+  createdAt: string;
+  lastLogin?: string;
+  isActive: boolean;
+  emailConfirmed: boolean;
+  phoneNumberConfirmed: boolean;
+  totalEvents: number;
+  publishedEvents: number;
+  unpublishedEvents: number;
+  upcomingEvents: number;
+  pastEvents: number;
+}
+
+export interface AdminOrganizerDetail extends AdminOrganizer {
+  recentEvents: AdminOrganizerEvent[];
+  firstEventDate?: string;
+  lastEventDate?: string;
+}
+
+export interface AdminOrganizerEvent {
+  id: string;
+  title: string;
+  description: string;
+  eventDate: string;
+  eventTime: string;
+  category: string;
+  image?: string;
+  imageUrl?: string;
+  isPublished: boolean;
+  venueId: string;
+  venueName: string;
+  organizerId: string;
+  organizerName: string;
+  organizerEmail: string;
+  organizationName?: string;
+  createdAt: string;
+  modifiedAt: string;
+}
+
+export interface AdminOrganizerStatistics {
+  totalOrganizers: number;
+  activeOrganizers: number;
+  inactiveOrganizers: number;
+  verifiedOrganizers: number;
+  unverifiedOrganizers: number;
+  organizersWithEvents: number;
+  organizersWithoutEvents: number;
+  topOrganizers: TopOrganizer[];
+  recentRegistrations: RecentOrganizer[];
+}
+
+export interface TopOrganizer {
+  id: string;
+  name: string;
+  email: string;
+  organizationName?: string;
+  eventCount: number;
+  publishedEvents: number;
+}
+
+export interface RecentOrganizer {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  isActive: boolean;
+  eventCount: number;
+}
+
+export interface OrganizerFilters {
+  search?: string;
+  organizationName?: string;
+  hasEvents?: boolean;
+}
+
 // Health Check Types
 export interface HealthCheck {
   status: "healthy" | "unhealthy" | "degraded";

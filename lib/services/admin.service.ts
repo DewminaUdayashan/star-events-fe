@@ -10,6 +10,10 @@ import type {
   AdminEvent,
   AdminEventStatistics,
   EventFilters,
+  AdminOrganizer,
+  AdminOrganizerDetail,
+  AdminOrganizerStatistics,
+  OrganizerFilters,
 } from "../types/api";
 
 export interface AdminStats {
@@ -212,6 +216,40 @@ export class AdminService {
 
   async deleteVenue(id: string): Promise<void> {
     return apiClient.delete(`/api/admin/venues/${id}`);
+  }
+
+  // Organizers Management
+  async getAdminOrganizers(
+    filters?: OrganizerFilters
+  ): Promise<AdminOrganizer[]> {
+    const params = new URLSearchParams();
+
+    if (filters?.search) {
+      params.append("search", filters.search);
+    }
+    if (filters?.organizationName) {
+      params.append("organizationName", filters.organizationName);
+    }
+    if (filters?.hasEvents !== undefined) {
+      params.append("hasEvents", filters.hasEvents.toString());
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `/api/admin/organizers?${queryString}`
+      : "/api/admin/organizers";
+
+    return apiClient.get<AdminOrganizer[]>(url);
+  }
+
+  async getAdminOrganizerById(id: string): Promise<AdminOrganizerDetail> {
+    return apiClient.get<AdminOrganizerDetail>(`/api/admin/organizers/${id}`);
+  }
+
+  async getAdminOrganizerStatistics(): Promise<AdminOrganizerStatistics> {
+    return apiClient.get<AdminOrganizerStatistics>(
+      "/api/admin/organizers/statistics"
+    );
   }
 
   // System Management

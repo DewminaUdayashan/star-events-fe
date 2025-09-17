@@ -19,6 +19,9 @@ export {
   useAdminEventStatistics,
   useAdminEvent,
   usePublishEvent,
+  useAdminOrganizers,
+  useAdminOrganizer,
+  useAdminOrganizerStatistics,
 } from "./admin-hooks";
 export { qrService, QRService } from "./qr.service";
 export { healthService, HealthService } from "./health.service";
