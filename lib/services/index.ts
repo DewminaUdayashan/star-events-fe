@@ -29,6 +29,16 @@ export {
   useUpdateVenue as useUpdateAdminVenue,
   useDeleteVenue as useDeleteAdminVenue,
 } from "./admin-hooks";
+export {
+  useAdminSalesReport,
+  useAdminUsersReport,
+  useAdminEventsReport,
+  useAdminRevenueReport,
+  useExportReportAsPdf,
+  useExportReportAsExcel,
+  useRefreshAllReports,
+  useReportPreview,
+} from "./admin-report-hooks";
 export { qrService, QRService } from "./qr.service";
 export { healthService, HealthService } from "./health.service";
 export { venuesService, VenuesService } from "./venues.service";

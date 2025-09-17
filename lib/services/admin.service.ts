@@ -19,6 +19,8 @@ import type {
   UpdateVenueRequest,
   VenueFilters,
   VenueEventsCount,
+  RevenueReport,
+  ReportFilters,
 } from "../types/api";
 
 export interface AdminStats {
@@ -177,29 +179,87 @@ export class AdminService {
     return apiClient.get<AdminStats>("/api/admin/stats");
   }
 
-  // Reports
-  async getSalesReport(
-    startDate?: string,
-    endDate?: string
-  ): Promise<SalesReport> {
+  // Reports Management
+  async getSalesReport(filters?: ReportFilters): Promise<SalesReport> {
     const params = new URLSearchParams();
-    if (startDate) params.append("startDate", startDate);
-    if (endDate) params.append("endDate", endDate);
+
+    if (filters?.startDate) {
+      params.append("startDate", filters.startDate);
+    }
+    if (filters?.endDate) {
+      params.append("endDate", filters.endDate);
+    }
+    if (filters?.groupBy) {
+      params.append("groupBy", filters.groupBy);
+    }
 
     const queryString = params.toString();
     const url = queryString
-      ? `/api/Reports/admin/sales?${queryString}`
-      : "/api/Reports/admin/sales";
+      ? `/api/admin/reports/sales?${queryString}`
+      : "/api/admin/reports/sales";
 
     return apiClient.get<SalesReport>(url);
   }
 
-  async getUsersReport(): Promise<UserReport> {
-    return apiClient.get<UserReport>("/api/Reports/admin/users");
+  async getUsersReport(
+    filters?: Omit<ReportFilters, "groupBy">
+  ): Promise<UserReport> {
+    const params = new URLSearchParams();
+
+    if (filters?.startDate) {
+      params.append("startDate", filters.startDate);
+    }
+    if (filters?.endDate) {
+      params.append("endDate", filters.endDate);
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `/api/admin/reports/users?${queryString}`
+      : "/api/admin/reports/users";
+
+    return apiClient.get<UserReport>(url);
   }
 
-  async getEventsReport(): Promise<EventReport> {
-    return apiClient.get<EventReport>("/api/Reports/admin/events");
+  async getEventsReport(
+    filters?: Omit<ReportFilters, "groupBy">
+  ): Promise<EventReport> {
+    const params = new URLSearchParams();
+
+    if (filters?.startDate) {
+      params.append("startDate", filters.startDate);
+    }
+    if (filters?.endDate) {
+      params.append("endDate", filters.endDate);
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `/api/admin/reports/events?${queryString}`
+      : "/api/admin/reports/events";
+
+    return apiClient.get<EventReport>(url);
+  }
+
+  async getRevenueReport(filters?: ReportFilters): Promise<RevenueReport> {
+    const params = new URLSearchParams();
+
+    if (filters?.startDate) {
+      params.append("startDate", filters.startDate);
+    }
+    if (filters?.endDate) {
+      params.append("endDate", filters.endDate);
+    }
+    if (filters?.groupBy) {
+      params.append("groupBy", filters.groupBy);
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `/api/admin/reports/revenue?${queryString}`
+      : "/api/admin/reports/revenue";
+
+    return apiClient.get<RevenueReport>(url);
   }
 
   async getMonitoringReport(): Promise<MonitoringReport> {
@@ -331,6 +391,75 @@ export class AdminService {
 
   async restoreBackup(backupId: string): Promise<void> {
     return apiClient.post(`/api/admin/backup/${backupId}/restore`);
+  }
+
+  // Report Export Methods
+  async exportReportAsPdf(
+    reportType: "sales" | "users" | "events" | "revenue",
+    filters?: ReportFilters
+  ): Promise<Blob> {
+    const params = new URLSearchParams();
+    params.append("format", "pdf");
+
+    if (filters?.startDate) {
+      params.append("startDate", filters.startDate);
+    }
+    if (filters?.endDate) {
+      params.append("endDate", filters.endDate);
+    }
+    if (filters?.groupBy) {
+      params.append("groupBy", filters.groupBy);
+    }
+
+    const queryString = params.toString();
+    const url = `/api/admin/reports/${reportType}/export?${queryString}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to export PDF");
+    }
+
+    return response.blob();
+  }
+
+  async exportReportAsExcel(
+    reportType: "sales" | "users" | "events" | "revenue",
+    filters?: ReportFilters
+  ): Promise<Blob> {
+    const params = new URLSearchParams();
+    params.append("format", "excel");
+
+    if (filters?.startDate) {
+      params.append("startDate", filters.startDate);
+    }
+    if (filters?.endDate) {
+      params.append("endDate", filters.endDate);
+    }
+    if (filters?.groupBy) {
+      params.append("groupBy", filters.groupBy);
+    }
+
+    const queryString = params.toString();
+    const url = `/api/admin/reports/${reportType}/export?${queryString}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to export Excel");
+    }
+
+    return response.blob();
   }
 }
 
