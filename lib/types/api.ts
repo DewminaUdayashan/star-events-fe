@@ -146,6 +146,7 @@ export interface EventFilters {
   fromDate?: string;
   toDate?: string;
   venue?: string;
+  venueId?: string;
   keyword?: string;
   category?: string;
   minPrice?: number;

@@ -25,13 +25,14 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { useEvents } from "@/lib/services";
+import { useVenues } from "@/lib/services/venues-hooks";
 import type { EventFilters } from "@/lib/types/api";
 import Navbar from "@/components/Navbar";
 import { getImageUrl } from "@/lib/utils";
 
 export default function EventsPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedVenue, setSelectedVenue] = useState("all");
+  const [selectedVenueId, setSelectedVenueId] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [sortBy, setSortBy] = useState("date");
@@ -42,28 +43,21 @@ export default function EventsPage() {
     setFromDate(today);
   }, []);
 
+  // Fetch venues for the dropdown
+  const { data: venues = [], isLoading: venuesLoading } = useVenues();
+
   // Prepare filters for the query
   const filters = useMemo<EventFilters>(() => {
     const f: EventFilters = {};
     if (searchQuery.trim()) f.keyword = searchQuery.trim();
-    if (selectedVenue !== "all") f.venue = selectedVenue;
+    if (selectedVenueId !== "all") f.venueId = selectedVenueId;
     if (fromDate) f.fromDate = fromDate;
     if (toDate) f.toDate = toDate;
     return f;
-  }, [searchQuery, selectedVenue, fromDate, toDate]);
+  }, [searchQuery, selectedVenueId, fromDate, toDate]);
 
   // Use TanStack Query to fetch events
   const { data: events = [], isLoading: loading, error } = useEvents(filters);
-
-  // Get unique venues from events
-  const venues = useMemo(() => {
-    const uniqueVenues = [
-      ...new Set(
-        events.map((event) => event.venue?.name).filter(Boolean) as string[]
-      ),
-    ];
-    return uniqueVenues;
-  }, [events]);
 
   // Sort events
   const sortedEvents = useMemo(() => {
@@ -155,15 +149,15 @@ export default function EventsPage() {
             </div>
 
             {/* Venue Filter */}
-            <Select value={selectedVenue} onValueChange={setSelectedVenue}>
+            <Select value={selectedVenueId} onValueChange={setSelectedVenueId}>
               <SelectTrigger className="bg-gray-700 border-gray-600 text-white rounded-2xl">
                 <SelectValue placeholder="Venue" />
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-600 rounded-2xl">
                 <SelectItem value="all">All Venues</SelectItem>
                 {venues.map((venue) => (
-                  <SelectItem key={venue} value={venue}>
-                    {venue}
+                  <SelectItem key={venue.id} value={venue.id}>
+                    {venue.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -209,12 +203,14 @@ export default function EventsPage() {
                 To: {new Date(toDate).toLocaleDateString()}
               </Badge>
             )}
-            {selectedVenue !== "all" && (
+            {selectedVenueId !== "all" && (
               <Badge
                 variant="secondary"
                 className="bg-purple-600/20 text-purple-300 border-purple-500/30"
               >
-                Venue: {selectedVenue}
+                Venue:{" "}
+                {venues.find((v) => v.id === selectedVenueId)?.name ||
+                  selectedVenueId}
               </Badge>
             )}
           </div>
@@ -355,7 +351,7 @@ export default function EventsPage() {
             <Button
               onClick={() => {
                 setSearchQuery("");
-                setSelectedVenue("all");
+                setSelectedVenueId("all");
                 setFromDate(new Date().toISOString().split("T")[0]); // Reset to today
                 setToDate("");
               }}

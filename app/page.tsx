@@ -24,12 +24,12 @@ export default function HomePage() {
       {/* Hero Section */}
       <HeroCarousel />
 
-      {/* Search and Filter Section */}
+      {/* Search and Filter Section
       <section className="py-8 bg-gray-800">
         <div className="container mx-auto px-4">
           <SearchAndFilter onSearch={handleSearch} />
         </div>
-      </section>
+      </section> */}
 
       {/* Trending Events */}
       <TrendingEvents />

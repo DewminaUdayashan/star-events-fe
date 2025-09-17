@@ -9,10 +9,16 @@ export class EventsService {
     if (filters?.fromDate) params.append("fromDate", filters.fromDate);
     if (filters?.toDate) params.append("toDate", filters.toDate);
     if (filters?.venue) params.append("venue", filters.venue);
+    if (filters?.venueId) params.append("venueId", filters.venueId);
     if (filters?.keyword) params.append("keyword", filters.keyword);
+    if (filters?.category) params.append("category", filters.category);
+    if (filters?.minPrice)
+      params.append("minPrice", filters.minPrice.toString());
+    if (filters?.maxPrice)
+      params.append("maxPrice", filters.maxPrice.toString());
 
     const queryString = params.toString();
-    const url = "/api/Events";
+    const url = queryString ? `/api/Events?${queryString}` : "/api/Events";
 
     return apiClient.get<Event[]>(url);
   }
