@@ -212,20 +212,6 @@ export interface SalesReport {
   }>;
 }
 
-export interface UserReport {
-  totalUsers: number;
-  activeUsers: number;
-  newRegistrations: number;
-  period: string;
-  userGrowth: number;
-  topOrganizers: Array<{
-    organizerId: string;
-    organizerName: string;
-    eventsCount: number;
-    totalRevenue: number;
-  }>;
-}
-
 export interface EventReport {
   totalEvents: number;
   publishedEvents: number;
@@ -451,6 +437,229 @@ export interface VenueFilters {
 
 export interface VenueEventsCount {
   eventCount: number;
+}
+
+// Admin Reports Types
+export interface SalesReport {
+  totalRevenue: number;
+  totalTicketsSold: number;
+  totalTransactions: number;
+  averageTicketPrice: number;
+  salesByPeriod: SalesByPeriod[];
+  topEventsBySales: TopEventBySales[];
+  salesByCategory: SalesByCategory[];
+  salesByOrganizer: SalesByOrganizer[];
+}
+
+export interface SalesByPeriod {
+  period: string;
+  revenue: number;
+  ticketsSold: number;
+  transactions: number;
+}
+
+export interface TopEventBySales {
+  eventId: string;
+  eventTitle: string;
+  eventCategory: string;
+  eventDate: string;
+  organizerName: string;
+  revenue: number;
+  ticketsSold: number;
+  transactions: number;
+}
+
+export interface SalesByCategory {
+  category: string;
+  revenue: number;
+  ticketsSold: number;
+  eventCount: number;
+  averageTicketPrice: number;
+}
+
+export interface SalesByOrganizer {
+  organizerId: string;
+  organizerName: string;
+  organizationName: string | null;
+  revenue: number;
+  ticketsSold: number;
+  eventCount: number;
+  averageRevenuePerEvent: number;
+}
+
+export interface UserReport {
+  totalUsers: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  verifiedUsers: number;
+  unverifiedUsers: number;
+  organizers: number;
+  customers: number;
+  admins: number;
+  registrationTrend: RegistrationTrend[];
+  mostActiveUsers: ActiveUser[];
+  topOrganizers: ReportTopOrganizer[];
+}
+
+export interface RegistrationTrend {
+  period: string;
+  newRegistrations: number;
+  newOrganizers: number;
+  newCustomers: number;
+}
+
+export interface ActiveUser {
+  userId: string;
+  fullName: string;
+  email: string;
+  role: string;
+  lastLogin: string;
+  ticketsPurchased: number;
+  totalSpent: number;
+  eventsOrganized: number;
+}
+
+export interface ReportTopOrganizer {
+  organizerId: string;
+  organizerName: string;
+  eventsCreated: number;
+  publishedEvents: number;
+  totalRevenue: number;
+  ticketsSold: number;
+  averageEventRating: number;
+}
+
+export interface EventReport {
+  totalEvents: number;
+  publishedEvents: number;
+  unpublishedEvents: number;
+  upcomingEvents: number;
+  pastEvents: number;
+  ongoingEvents: number;
+  eventsByCategory: EventsByCategory[];
+  eventsByPeriod: EventsByPeriod[];
+  mostPopularEvents: PopularEvent[];
+  eventPerformance: EventPerformance[];
+  venueStats: VenueStats;
+}
+
+export interface EventsByCategory {
+  category: string;
+  eventCount: number;
+  publishedCount: number;
+  averageTicketsSold: number;
+  averageRevenue: number;
+}
+
+export interface EventsByPeriod {
+  period: string;
+  eventsCreated: number;
+  eventsPublished: number;
+  eventsHeld: number;
+}
+
+export interface PopularEvent {
+  eventId: string;
+  title: string;
+  category: string;
+  eventDate: string;
+  organizerName: string;
+  ticketsSold: number;
+  revenue: number;
+  views: number;
+}
+
+export interface EventPerformance {
+  eventId: string;
+  title: string;
+  status: string;
+  eventDate: string;
+  totalCapacity: number;
+  ticketsSold: number;
+  salesPercentage: number;
+  revenue: number;
+}
+
+export interface VenueStats {
+  totalVenues: number;
+  activeVenues: number;
+  mostUsedVenues: VenueUsage[];
+  leastUsedVenues: VenueUsage[];
+}
+
+export interface VenueUsage {
+  venueId: string;
+  venueName: string;
+  location: string;
+  eventCount: number;
+  upcomingEventCount: number;
+  utilizationRate: number;
+}
+
+export interface RevenueReport {
+  totalRevenue: number;
+  pendingRevenue: number;
+  completedRevenue: number;
+  refundedAmount: number;
+  netRevenue: number;
+  revenueByPeriod: RevenueByPeriod[];
+  topRevenueEvents: TopRevenueEvent[];
+  revenueByOrganizer: RevenueByOrganizer[];
+  revenueByCategory: RevenueByCategory[];
+  projection: RevenueProjection;
+}
+
+export interface RevenueByPeriod {
+  period: string;
+  revenue: number;
+  pendingRevenue: number;
+  completedRevenue: number;
+  transactionCount: number;
+  growthRate: number;
+}
+
+export interface TopRevenueEvent {
+  eventId: string;
+  eventTitle: string;
+  eventDate: string;
+  organizerName: string;
+  revenue: number;
+  pendingAmount: number;
+  completedAmount: number;
+  ticketsSold: number;
+}
+
+export interface RevenueByOrganizer {
+  organizerId: string;
+  organizerName: string;
+  totalRevenue: number;
+  pendingRevenue: number;
+  completedRevenue: number;
+  eventCount: number;
+  averageRevenuePerEvent: number;
+}
+
+export interface RevenueByCategory {
+  category: string;
+  revenue: number;
+  pendingRevenue: number;
+  completedRevenue: number;
+  eventCount: number;
+  marketShare: number;
+}
+
+export interface RevenueProjection {
+  projectedMonthlyRevenue: number;
+  projectedQuarterlyRevenue: number;
+  projectedAnnualRevenue: number;
+  growthRate: number;
+  projectionBasis: string;
+}
+
+export interface ReportFilters {
+  startDate?: string;
+  endDate?: string;
+  groupBy?: "daily" | "weekly" | "monthly" | "yearly";
 }
 
 // Health Check Types
