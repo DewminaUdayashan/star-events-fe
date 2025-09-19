@@ -142,6 +142,87 @@ export class AuthService {
     return response.data;
   }
 
+  async forgotPassword(email: string): Promise<{
+    message: string;
+    data: {
+      email: string;
+      expiresAt: string;
+      remainingAttempts: number;
+      sentAt: string;
+    };
+    statusCode: number;
+  }> {
+    const response = await apiClient.post<{
+      message: string;
+      data: {
+        email: string;
+        expiresAt: string;
+        remainingAttempts: number;
+        sentAt: string;
+      };
+      statusCode: number;
+    }>("/api/Auth/forgot-password", { email });
+
+    return response;
+  }
+
+  async verifyResetOTP(
+    email: string,
+    otp: string
+  ): Promise<{
+    message: string;
+    data: {
+      email: string;
+      resetToken: string;
+      verifiedAt: string;
+      tokenExpiresAt: string;
+    };
+    statusCode: number;
+  }> {
+    const response = await apiClient.post<{
+      message: string;
+      data: {
+        email: string;
+        resetToken: string;
+        verifiedAt: string;
+        tokenExpiresAt: string;
+      };
+      statusCode: number;
+    }>("/api/Auth/verify-reset-otp", { email, otp });
+
+    return response;
+  }
+
+  async resetPasswordOTP(
+    email: string,
+    resetToken: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<{
+    message: string;
+    data: {
+      email: string;
+      resetAt: string;
+    };
+    statusCode: number;
+  }> {
+    const response = await apiClient.post<{
+      message: string;
+      data: {
+        email: string;
+        resetAt: string;
+      };
+      statusCode: number;
+    }>("/api/Auth/reset-password-otp", {
+      email,
+      resetToken,
+      newPassword,
+      confirmPassword,
+    });
+
+    return response;
+  }
+
   isAuthenticated(): boolean {
     return !!apiClient.getToken();
   }
