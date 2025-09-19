@@ -68,10 +68,32 @@ export function VenueSelect({
 
   // Fetch venues with search
   const {
-    data: venues = [],
+    data: venuesData = [],
     isLoading,
     error: venuesError,
   } = useVenues({ search: searchQuery });
+
+  // Handle API response structure for venues
+  const venues = useMemo(() => {
+    console.log("VenueSelect - Raw venues data:", venuesData);
+
+    if (!venuesData) return [];
+
+    let venuesArray = venuesData;
+    const data = venuesData as any;
+
+    // Handle nested structures like { data: [...] } or { $values: [...] }
+    if (typeof data === "object" && !Array.isArray(data) && data.data) {
+      venuesArray = data.data;
+    }
+    if (typeof data === "object" && !Array.isArray(data) && data.$values) {
+      venuesArray = data.$values;
+    }
+
+    console.log("VenueSelect - Final venues array:", venuesArray);
+
+    return Array.isArray(venuesArray) ? venuesArray : [];
+  }, [venuesData]);
 
   const createVenueMutation = useCreateVenue();
 

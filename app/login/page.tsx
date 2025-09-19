@@ -3,7 +3,7 @@
 import type React from "react";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,17 +15,35 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Mail, Lock, Star, ArrowLeft } from "lucide-react";
+import {
+  Loader2,
+  Mail,
+  Lock,
+  Star,
+  ArrowLeft,
+  CheckCircle,
+  AlertTriangle,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | React.ReactElement>("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const { login, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Check for success messages from URL params
+  useEffect(() => {
+    const message = searchParams.get("message");
+    if (message === "email-verified") {
+      setSuccessMessage("Email verified successfully! You can now log in.");
+    }
+  }, [searchParams]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -38,12 +56,35 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccessMessage("");
 
     try {
       await login({ email, password });
       router.push("/");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+    } catch (err: any) {
+      console.log("Login error:", err);
+
+      // Handle email verification required error
+      if (err.statusCode === 401 && err.requiresEmailVerification) {
+        setError(
+          <div>
+            <div className="font-semibold mb-2">
+              Email verification required
+            </div>
+            <div className="text-sm mb-3">{err.error}</div>
+            <Link
+              href={`/auth/verify-email?email=${encodeURIComponent(
+                err.email || email
+              )}`}
+              className="inline-flex items-center justify-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              Verify Email
+            </Link>
+          </div>
+        );
+      } else {
+        setError(err instanceof Error ? err.message : "Login failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -80,8 +121,18 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {successMessage && (
+                <Alert className="border-green-500 bg-green-500/10 rounded-2xl">
+                  <CheckCircle className="h-4 w-4 text-green-400" />
+                  <AlertDescription className="text-green-400">
+                    {successMessage}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {error && (
                 <Alert className="border-red-500 bg-red-500/10 rounded-2xl">
+                  <AlertTriangle className="h-4 w-4 text-red-400" />
                   <AlertDescription className="text-red-400">
                     {error}
                   </AlertDescription>
@@ -102,7 +153,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder="john@example.com"
                     className="pl-10 bg-gray-900 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 rounded-2xl"
                     required
                   />
@@ -131,6 +182,16 @@ export default function LoginPage() {
               </div>
 
               <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <input
+                    id="remember"
+                    type="checkbox"
+                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <label htmlFor="remember" className="text-sm text-gray-300">
+                    Remember me
+                  </label>
+                </div>
                 <Link
                   href="/forgot-password"
                   className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
@@ -141,8 +202,8 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="w-full bg-purple-600 hover:bg-purple-700 rounded-2xl"
                 disabled={loading}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-2xl h-12 font-semibold"
               >
                 {loading ? (
                   <>
@@ -154,36 +215,20 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-gray-400">
-                Don't have an account?{" "}
-                <Link
-                  href="/register"
-                  className="text-purple-400 hover:text-purple-300 transition-colors"
-                >
-                  Sign up here
-                </Link>
-              </p>
-            </div>
-
-            {/* Demo Credentials */}
-            {/* <div className="mt-6 p-4 bg-gray-900 rounded-2xl border border-gray-700">
-              <p className="text-xs text-gray-400 mb-2">Demo Credentials:</p>
-              <div className="space-y-1 text-xs">
-                <p className="text-gray-300">
-                  Customer: john@example.com / password123
-                </p>
-                <p className="text-gray-300">
-                  Organizer: organizer@example.com / password123
-                </p>
-                <p className="text-gray-300">
-                  Admin: admin@starevents.lk / password123
-                </p>
-              </div>
-            </div> */}
           </CardContent>
         </Card>
+
+        <div className="text-center mt-6">
+          <p className="text-gray-400">
+            Don't have an account?{" "}
+            <Link
+              href="/register"
+              className="text-purple-400 hover:text-purple-300 font-semibold"
+            >
+              Sign up
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

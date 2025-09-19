@@ -33,6 +33,7 @@ interface AuthContextType extends AuthState {
   hasRole: (role: UserRole) => boolean;
   isRole: (role: UserRole) => boolean;
   hasAnyRole: (roles: UserRole[]) => boolean;
+  clearAuthData: () => void; // Add utility to clear corrupted data
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,7 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (token && userStr && rolesStr) {
             try {
               const user = JSON.parse(userStr);
-              const roles = JSON.parse(rolesStr);
+              const parsedRoles = JSON.parse(rolesStr);
+
+              // Ensure roles is always an array
+              const roles: UserRole[] = Array.isArray(parsedRoles)
+                ? parsedRoles
+                : ["Customer"];
 
               // Set token in API client
               apiClient.setToken(token);
@@ -109,29 +115,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (credentials: LoginRequest) => {
     try {
       const response = await authService.login(credentials);
-      // Extract roles from response or default to Customer
-      const roles: UserRole[] = response.roles || ["Customer"];
+
+      // Handle the actual API response structure which differs from TypeScript types
+      // API returns nested structure: { data: { user, roles: { $values: [] }, token } }
+      const apiResponse = response as any;
+
+      // Extract roles from the correct API response structure
+      let roles: UserRole[] = ["Customer"]; // Default fallback
+
+      if (apiResponse.data?.roles?.$values) {
+        // Handle nested structure: response.data.roles.$values
+        roles = Array.isArray(apiResponse.data.roles.$values)
+          ? apiResponse.data.roles.$values
+          : ["Customer"];
+      } else if (apiResponse.roles?.$values) {
+        // Handle direct structure: response.roles.$values
+        roles = Array.isArray(apiResponse.roles.$values)
+          ? apiResponse.roles.$values
+          : ["Customer"];
+      } else if (Array.isArray(apiResponse.roles)) {
+        // Handle flat array: response.roles
+        roles = apiResponse.roles;
+      } else if (Array.isArray(response.roles)) {
+        // Handle TypeScript expected structure
+        roles = response.roles;
+      }
+
+      // Extract user and token from the correct structure
+      const user = apiResponse.data?.user || response.user;
+      const token = apiResponse.data?.token || response.token;
+
       console.log("Login response:", response);
-      console.log("Roles:", roles);
-      console.log("User:", response.user);
+      console.log("Extracted roles:", roles);
+      console.log("Extracted user:", user);
+      console.log("Extracted token:", !!token);
 
       // Store everything in localStorage
       if (typeof window !== "undefined") {
-        localStorage.setItem("user", JSON.stringify(response.user));
+        localStorage.setItem("user", JSON.stringify(user));
         localStorage.setItem("roles", JSON.stringify(roles));
         // Token is already stored by authService.login
       }
 
       setAuthState({
-        user: response.user,
-        token: response.token,
+        user,
+        token,
         roles,
         isAuthenticated: true,
         isLoading: false,
       });
 
       console.log("Auth state updated:", {
-        user: response.user?.fullName,
+        user: user?.fullName,
         roles,
       });
     } catch (error) {
@@ -147,26 +182,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         request: data,
       });
 
-      // Extract roles from response or default to Customer
-      const roles: UserRole[] = (response.data.roles as UserRole[]) || [
-        "Customer",
-      ];
+      // Don't auto-authenticate - user needs to verify email first
+      console.log(
+        "Registration successful - email verification required:",
+        response
+      );
 
-      // Store everything in localStorage
-      if (typeof window !== "undefined") {
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-        localStorage.setItem("roles", JSON.stringify(roles));
-        localStorage.setItem("auth_token", response.data.token);
-      }
-
-      setAuthState({
-        user: response.data.user,
-        token: response.data.token,
-        roles,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-      console.log("Registration successful:", response);
+      return response; // Return the response for the component to handle
     } catch (error: any) {
       console.error("Registration failed:", error);
       setAuthState((prev) => ({ ...prev, isLoading: false }));
@@ -214,15 +236,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Role checking utilities
   const hasRole = (role: UserRole): boolean => {
+    if (!Array.isArray(authState.roles)) {
+      console.warn("authState.roles is not an array:", authState.roles);
+      return false;
+    }
     return authState.roles.includes(role);
   };
 
   const isRole = (role: UserRole): boolean => {
+    if (!Array.isArray(authState.roles)) {
+      console.warn("authState.roles is not an array:", authState.roles);
+      return false;
+    }
     return authState.roles.length === 1 && authState.roles[0] === role;
   };
 
   const hasAnyRole = (roles: UserRole[]): boolean => {
+    if (!Array.isArray(authState.roles)) {
+      console.warn("authState.roles is not an array:", authState.roles);
+      return false;
+    }
     return roles.some((role) => authState.roles.includes(role));
+  };
+
+  const clearAuthData = () => {
+    console.log("Clearing corrupted auth data");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("roles");
+    }
+
+    setAuthState({
+      user: null,
+      token: null,
+      roles: [],
+      isAuthenticated: false,
+      isLoading: false,
+    });
   };
 
   const contextValue: AuthContextType = {
@@ -234,6 +285,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasRole,
     isRole,
     hasAnyRole,
+    clearAuthData,
   };
 
   return (

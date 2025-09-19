@@ -1,0 +1,1 @@
+console.log("localStorage auth data:"); console.log("token:", localStorage.getItem("auth_token")); console.log("user:", localStorage.getItem("user")); console.log("roles:", localStorage.getItem("roles"));

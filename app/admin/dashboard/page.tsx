@@ -59,10 +59,49 @@ export default function AdminDashboard() {
   const [toDate, setToDate] = useState("");
 
   // Fetch data
-  const { data: venues = [] } = useVenues();
-  const { data: categories = [] } = useCategories();
+  const { data: venuesData = [] } = useVenues();
+  const { data: categoriesData = [] } = useCategories();
   const { data: statistics, isLoading: statsLoading } =
     useAdminEventStatistics();
+
+  // Handle API response structures for venues and categories
+  const venues = useMemo(() => {
+    console.log("AdminDashboard - Raw venues data:", venuesData);
+
+    if (!venuesData) return [];
+
+    let venuesArray = venuesData;
+    const data = venuesData as any;
+
+    // Handle nested structures
+    if (typeof data === "object" && !Array.isArray(data) && data.data) {
+      venuesArray = data.data;
+    }
+    if (typeof data === "object" && !Array.isArray(data) && data.$values) {
+      venuesArray = data.$values;
+    }
+
+    return Array.isArray(venuesArray) ? venuesArray : [];
+  }, [venuesData]);
+
+  const categories = useMemo(() => {
+    console.log("AdminDashboard - Raw categories data:", categoriesData);
+
+    if (!categoriesData) return [];
+
+    let categoriesArray = categoriesData;
+    const data = categoriesData as any;
+
+    // Handle nested structures
+    if (typeof data === "object" && !Array.isArray(data) && data.data) {
+      categoriesArray = data.data;
+    }
+    if (typeof data === "object" && !Array.isArray(data) && data.$values) {
+      categoriesArray = data.$values;
+    }
+
+    return Array.isArray(categoriesArray) ? categoriesArray : [];
+  }, [categoriesData]);
 
   // Prepare filters
   const filters = useMemo<EventFilters>(() => {
