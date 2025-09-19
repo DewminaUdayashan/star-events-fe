@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ticketsService } from '@/lib/services/tickets.service'
 import type { Ticket, BookTicketRequest, ApplyPromotionRequest, UseLoyaltyPointsRequest, PaginationParams } from '@/lib/types/api'
-import QRCode from 'qrcode.react'
-import domtoimage from 'dom-to-image-more'
+
 
 export function useTicketHistory(params?: PaginationParams) {
   const [tickets, setTickets] = useState<Ticket[]>([])
@@ -170,7 +169,7 @@ export function useTicketQRCode() {
 
   // Poll payment status until ticket is paid, with fallback to mark as paid
   const pollPaymentStatus = useCallback(async (ticketId: string, maxAttempts = 15): Promise<boolean> => {
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    // for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const status = await ticketsService.getPaymentStatus(ticketId)
         setPaymentStatus(status.paymentStatus)
@@ -199,7 +198,7 @@ export function useTicketQRCode() {
         }
         await new Promise(resolve => setTimeout(resolve, 3000))
       }
-    }
+    // }
     
     // If polling failed, try to manually mark as paid as fallback
     try {
