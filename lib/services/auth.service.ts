@@ -142,6 +142,40 @@ export class AuthService {
     return response.data;
   }
 
+  async getProfile(): Promise<{
+    message: string;
+    data: {
+      id: string;
+      email: string;
+      fullName: string;
+      isActive: boolean;
+      emailConfirmed: boolean;
+      isEmailVerified: boolean;
+      createdAt: string;
+      lastLogin: string;
+      roles: string[];
+    };
+    statusCode: number;
+  }> {
+    const response = await apiClient.get<{
+      message: string;
+      data: {
+        id: string;
+        email: string;
+        fullName: string;
+        isActive: boolean;
+        emailConfirmed: boolean;
+        isEmailVerified: boolean;
+        createdAt: string;
+        lastLogin: string;
+        roles: string[];
+      };
+      statusCode: number;
+    }>("/api/Auth/profile");
+
+    return response;
+  }
+
   isAuthenticated(): boolean {
     return !!apiClient.getToken();
   }
