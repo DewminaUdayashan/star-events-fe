@@ -47,6 +47,15 @@ class ApiClient {
         if (this.token) {
           config.headers.Authorization = `Bearer ${this.token}`;
         }
+
+        // Log the request for debugging
+        console.log("Making API request:", {
+          method: config.method,
+          url: config.url,
+          data: config.data,
+          headers: config.headers,
+        });
+
         return config;
       },
       (error) => Promise.reject(error)
@@ -54,8 +63,22 @@ class ApiClient {
 
     // Response interceptor for error handling
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        console.log("API response:", {
+          status: response.status,
+          url: response.config.url,
+          data: response.data,
+        });
+        return response;
+      },
       async (error) => {
+        console.log("API error:", {
+          status: error.response?.status,
+          url: error.config?.url,
+          data: error.response?.data,
+          message: error.message,
+        });
+
         // Check if it's a 401 error with email verification requirement
         if (error.response?.status === 401) {
           const errorData = error.response.data;

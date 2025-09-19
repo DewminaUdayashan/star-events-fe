@@ -100,6 +100,48 @@ export class AuthService {
     return response;
   }
 
+  async createAdmin(data: {
+    email: string;
+    password: string;
+    fullName: string;
+    address: string;
+    dateOfBirth: string;
+  }): Promise<any> {
+    const payload = {
+      email: data.email,
+      password: data.password,
+      fullName: data.fullName,
+      address: data.address,
+      dateOfBirth: data.dateOfBirth,
+    };
+
+    console.log("Sending create admin payload:", payload);
+
+    const response = await apiClient.post<{
+      message: string;
+      data: any;
+      statusCode: number;
+    }>("/api/Auth/create-admin", payload);
+
+    return response;
+  }
+
+  async getAllAdminUsers(): Promise<{
+    totalCount: number;
+    adminUsers: any[];
+  }> {
+    const response = await apiClient.get<{
+      message: string;
+      data: {
+        totalCount: number;
+        adminUsers: any[];
+      };
+      statusCode: number;
+    }>("/api/Auth/admin-users");
+
+    return response.data;
+  }
+
   isAuthenticated(): boolean {
     return !!apiClient.getToken();
   }
