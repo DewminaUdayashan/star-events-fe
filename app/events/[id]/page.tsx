@@ -96,7 +96,7 @@ export default function EventDetailsPage() {
   };
 
   const hasAvailableTickets = () => {
-    return event.prices && event.prices.some(price => price.stock > 0);
+    return event.prices && Array.isArray(event.prices) && event.prices.some(price => price.stock > 0);
   };
 
   const handleBookTickets = async () => {
@@ -282,7 +282,7 @@ export default function EventDetailsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Tickets List */}
-                {event.prices && event.prices.length > 0 ? (
+                {event.prices && Array.isArray(event.prices) && event.prices.length > 0 ? (
                   event.prices
                     .filter(price => price.stock > 0)
                     .map((price: EventPrice) => (
