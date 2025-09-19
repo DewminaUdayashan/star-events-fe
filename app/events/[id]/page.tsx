@@ -121,7 +121,9 @@ export default function EventDetailsPage() {
     try {
       setBookingLoading(true);
 
-      // Book each ticket type separately
+      // Create booking requests for each selected ticket type
+      const bookingRequests: BookTicketRequest[] = [];
+      
       for (const [priceId, quantity] of Object.entries(selectedTickets)) {
         if (quantity > 0) {
           const bookingRequest: BookTicketRequest = {
@@ -130,18 +132,19 @@ export default function EventDetailsPage() {
             quantity,
             useLoyaltyPoints: false,
           };
-
-          await ticketsService.bookTicket(bookingRequest);
+          bookingRequests.push(bookingRequest);
         }
       }
 
-      // Reset selected tickets after successful booking
+      // Store booking requests in sessionStorage
+      sessionStorage.setItem("bookingRequests", JSON.stringify(bookingRequests));
+
+      // Reset selected tickets and redirect to booking page
       setSelectedTickets({});
-      alert("Tickets booked successfully!");
       window.location.href = `/events/${event.id}/booking`;
     } catch (err) {
       console.error("Booking error:", err);
-      alert("Failed to book tickets. Please try again.");
+      alert("Failed to prepare booking. Please try again.");
     } finally {
       setBookingLoading(false);
     }

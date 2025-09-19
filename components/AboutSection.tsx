@@ -105,7 +105,7 @@ export default function AboutSection() {
             {/* Main Image */}
             <Card className="bg-gray-800 border-gray-700 overflow-hidden">
               <div className="relative h-80">
-                <Image src="/diverse-group-enjoying-cultural-event-concert.jpg" alt="People enjoying events" fill className="object-cover" />
+                <Image src="/assets/hero-concert.jpg" alt="People enjoying events" fill className="object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 to-transparent" />
 
                 {/* Floating Stats */}

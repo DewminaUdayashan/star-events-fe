@@ -10,10 +10,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { AlertCircle, CheckCircle, Loader2, ArrowLeft } from 'lucide-react'
+import { AlertCircle, CheckCircle, Loader2, ArrowLeft, CreditCard } from 'lucide-react'
 import Link from 'next/link'
+import { BookingPaymentForm } from '@/components/payment/BookingPaymentForm'
 
-export default function BookingPage() {
+export default function PaymentPage() {
   const router = useRouter()
   const params = useParams()
   const eventId = params.id as string
@@ -22,9 +23,9 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [bookingRequests, setBookingRequests] = useState<BookTicketRequest[]>([])
-  const [confirmingBooking, setConfirmingBooking] = useState(false)
-  const [bookingComplete, setBookingComplete] = useState(false)
-  const [confirmedTickets, setConfirmedTickets] = useState<Ticket[]>([])
+  const [processingPayment, setProcessingPayment] = useState(false)
+  const [paymentComplete, setPaymentComplete] = useState(false)
+  const [tempTickets, setTempTickets] = useState<Ticket[]>([])
 
   useEffect(() => {
     if (eventId) {
@@ -77,10 +78,31 @@ export default function BookingPage() {
     return bookingRequests.reduce((total, request) => total + request.quantity, 0)
   }
 
-  const handleProceedToPayment = () => {
+  const handlePaymentSuccess = async () => {
     if (!event || bookingRequests.length === 0) return
-    // Redirect to payment page instead of directly booking
-    window.location.href = `/events/${eventId}/payment`
+
+    try {
+      setProcessingPayment(true)
+      setPaymentComplete(true)
+      
+      console.log('Payment successful, redirecting to success page')
+      
+      // Redirect to success page - let the success page handle ticket creation
+      // Keep booking requests in sessionStorage for the success page to process
+      setTimeout(() => {
+        router.push(`/events/${eventId}/booking/success`)
+      }, 1500)
+    } catch (err) {
+      console.error("Payment success handling error:", err)
+      setError("Payment successful but redirection failed. Please contact support.")
+    } finally {
+      setProcessingPayment(false)
+    }
+  }
+
+  const handlePaymentError = (errorMessage: string) => {
+    setError(`Payment failed: ${errorMessage}`)
+    setProcessingPayment(false)
   }
 
   if (loading) {
@@ -88,7 +110,7 @@ export default function BookingPage() {
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-purple-400 mx-auto mb-4" />
-          <p className="text-gray-400">Loading booking details...</p>
+          <p className="text-gray-400">Loading payment details...</p>
         </div>
       </div>
     )
@@ -99,10 +121,10 @@ export default function BookingPage() {
       <div className="min-h-screen bg-gray-900">
         <div className="container mx-auto px-4 py-8">
           <div className="mb-6">
-            <Link href={`/events/${eventId}`}>
+            <Link href={`/events/${eventId}/booking`}>
               <Button variant="ghost" className="text-gray-400 hover:text-white rounded-2xl">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Event
+                Back to Booking
               </Button>
             </Link>
           </div>
@@ -125,43 +147,24 @@ export default function BookingPage() {
     )
   }
 
-  if (bookingComplete) {
+  if (paymentComplete) {
     return (
       <div className="min-h-screen bg-gray-900">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto text-center">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
-            <h1 className="text-3xl font-bold text-white mb-4">Booking Confirmed!</h1>
+            <h1 className="text-3xl font-bold text-white mb-4">Payment Successful!</h1>
             <p className="text-gray-300 mb-6">
-              Your tickets have been successfully booked. You can view them in your ticket history.
+              Your payment has been processed and tickets are being confirmed. 
+              You will be redirected to your tickets shortly.
             </p>
             
-            {confirmedTickets.length > 0 && (
-              <div className="mb-6">
-                <p className="text-gray-400 mb-2">Ticket IDs:</p>
-                {confirmedTickets.map((ticket, index) => (
-                  <p key={ticket.id} className="text-sm text-gray-500">
-                    {index + 1}. {ticket.id}
-                  </p>
-                ))}
+            {processingPayment && (
+              <div className="flex items-center justify-center mb-6">
+                <Loader2 className="h-6 w-6 animate-spin text-purple-400 mr-2" />
+                <span className="text-gray-400">Confirming your booking...</span>
               </div>
             )}
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                onClick={() => router.push('/my-tickets')} 
-                className="bg-purple-600 hover:bg-purple-700 rounded-2xl"
-              >
-                View My Tickets
-              </Button>
-              <Button 
-                onClick={() => router.push('/events')} 
-                variant="outline"
-                className="border-gray-600 text-gray-400 hover:text-white rounded-2xl"
-              >
-                Browse More Events
-              </Button>
-            </div>
           </div>
         </div>
       </div>
@@ -173,88 +176,82 @@ export default function BookingPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Back Button */}
         <div className="mb-6">
-          <Link href={`/events/${eventId}`}>
+          <Link href={`/events/${eventId}/booking`}>
             <Button variant="ghost" className="text-gray-400 hover:text-white rounded-2xl">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Event
+              Back to Booking
             </Button>
           </Link>
         </div>
 
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-8">Confirm Your Booking</h1>
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-3xl font-bold text-white mb-8">Complete Your Payment</h1>
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Event Details */}
-            <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Order Summary */}
+            <div>
               <Card className="bg-gray-800 border-gray-700 rounded-3xl">
                 <CardHeader>
-                  <CardTitle className="text-white">Event Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <h3 className="text-xl font-semibold text-white mb-2">{event.title}</h3>
-                  <p className="text-gray-400 mb-4">{event.description}</p>
-                  <div className="space-y-2">
-                    <p className="text-gray-300">
-                      <span className="font-medium">Date:</span>{' '}
-                      {new Date(event.eventDate).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </p>
-                    <p className="text-gray-300">
-                      <span className="font-medium">Time:</span>{' '}
-                      {new Date(event.eventTime).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                    <p className="text-gray-300">
-                      <span className="font-medium">Venue:</span> {event.venue?.name}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Booking Summary */}
-            <div>
-              <Card className="bg-gray-800 border-gray-700 sticky top-4 rounded-3xl">
-                <CardHeader>
-                  <CardTitle className="text-white">Booking Summary</CardTitle>
+                  <CardTitle className="text-white flex items-center">
+                    <CreditCard className="h-5 w-5 mr-2" />
+                    Order Summary
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Event Details */}
+                  <div className="border border-gray-700 rounded-2xl p-4">
+                    <h3 className="text-lg font-semibold text-white mb-2">{event.title}</h3>
+                    <div className="space-y-1 text-sm text-gray-400">
+                      <p>
+                        <span className="font-medium">Date:</span>{' '}
+                        {new Date(event.eventDate).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                      <p>
+                        <span className="font-medium">Time:</span>{' '}
+                        {new Date(event.eventTime).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                      <p>
+                        <span className="font-medium">Venue:</span> {event.venue?.name}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Tickets */}
                   {bookingRequests.length > 0 ? (
                     <>
-                      {bookingRequests.map((request, index) => {
-                        const ticketDetails = getTicketDetails(request)
-                        if (!ticketDetails) return null
-                        
-                        return (
-                          <div key={index} className="border border-gray-700 rounded-2xl p-4">
-                            <div className="flex justify-between items-start mb-2">
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-white">Selected Tickets</h4>
+                        {bookingRequests.map((request, index) => {
+                          const ticketDetails = getTicketDetails(request)
+                          if (!ticketDetails) return null
+                          
+                          return (
+                            <div key={index} className="flex justify-between items-center py-2">
                               <div>
-                                <h4 className="font-semibold text-white">
+                                <p className="text-white font-medium">
                                   {ticketDetails.category || 'General Admission'}
-                                </h4>
+                                </p>
                                 <p className="text-sm text-gray-400">
-                                  Quantity: {request.quantity}
+                                  Quantity: {request.quantity} × Rs. {ticketDetails.price.toLocaleString()}
                                 </p>
                               </div>
                               <div className="text-right">
                                 <p className="font-bold text-white">
                                   Rs. {(ticketDetails.price * request.quantity).toLocaleString()}
                                 </p>
-                                <p className="text-xs text-gray-400">
-                                  Rs. {ticketDetails.price.toLocaleString()} each
-                                </p>
                               </div>
                             </div>
-                          </div>
-                        )
-                      })}
+                          )
+                        })}
+                      </div>
                       
                       <Separator className="bg-gray-700" />
                       
@@ -263,24 +260,40 @@ export default function BookingPage() {
                           <span>Total Tickets:</span>
                           <span>{getTotalTickets()}</span>
                         </div>
-                        <div className="flex justify-between text-white font-bold text-lg">
+                        <div className="flex justify-between text-white font-bold text-xl">
                           <span>Total Amount:</span>
                           <span>Rs. {getTotalAmount().toLocaleString()}</span>
                         </div>
                       </div>
-                      
-                      <Button
-                        className="w-full bg-purple-600 hover:bg-purple-700 rounded-2xl"
-                        size="lg"
-                        onClick={handleProceedToPayment}
-                        disabled={confirmingBooking}
-                      >
-                        Proceed to Payment
-                      </Button>
                     </>
                   ) : (
                     <div className="text-center py-4">
                       <p className="text-gray-400">No booking requests found</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Payment Form */}
+            <div>
+              <Card className="bg-gray-800 border-gray-700 rounded-3xl">
+                <CardHeader>
+                  <CardTitle className="text-white">Payment Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {getTotalAmount() > 0 ? (
+                    <BookingPaymentForm
+                      bookingRequests={bookingRequests}
+                      totalAmount={getTotalAmount()}
+                      currency="LKR"
+                      onSuccess={handlePaymentSuccess}
+                      onError={handlePaymentError}
+                      disabled={processingPayment}
+                    />
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-400">No payment required</p>
                     </div>
                   )}
                 </CardContent>

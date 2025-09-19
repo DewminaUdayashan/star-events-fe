@@ -64,6 +64,14 @@ export class PaymentService {
     return apiClient.post('/api/Payment/create-payment-intent', { ticketId });
   }
 
+  // Create payment intent for booking requests (before tickets are created)
+  async createBookingPaymentIntent(bookingRequests: any[], totalAmount: number): Promise<{ clientSecret: string; paymentIntentId: string }> {
+    return apiClient.post('/api/Payment/create-booking-payment-intent', { 
+      bookingRequests, 
+      totalAmount 
+    });
+  }
+
   async processPayment(data: ProcessPaymentRequest): Promise<PaymentResponse> {
     return apiClient.post<PaymentResponse>("/api/Payment/process", data)
   }
@@ -132,19 +140,22 @@ export class PaymentService {
     return { paymentMethodId: paymentMethod.id }
   }
 
-  async confirmStripePayment(clientSecret: string, paymentMethodId: string): Promise<{ success: boolean; error?: string }> {
+  async confirmStripePayment(clientSecret: string, paymentMethodId?: string): Promise<{ success: boolean; error?: string; paymentIntent?: any }> {
     const stripe = await this.getStripeInstance()
     if (!stripe) throw new Error('Stripe not initialized')
 
-    const { error } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: paymentMethodId,
-    })
+    const confirmOptions: any = {}
+    if (paymentMethodId) {
+      confirmOptions.payment_method = paymentMethodId
+    }
+
+    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, confirmOptions)
 
     if (error) {
       return { success: false, error: error.message }
     }
 
-    return { success: true }
+    return { success: true, paymentIntent }
   }
 
   async setupStripePaymentMethod(cardElement: any): Promise<{ setupIntentId: string }> {
