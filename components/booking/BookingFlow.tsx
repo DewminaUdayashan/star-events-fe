@@ -1,21 +1,19 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { 
-  Ticket, 
-  CreditCard, 
-  CheckCircle, 
-  ArrowRight, 
+import {
+  Ticket,
+  CreditCard,
+  CheckCircle,
+  ArrowRight,
   ArrowLeft,
-  Users,
   Calendar,
   MapPin,
   Tag,
@@ -27,8 +25,8 @@ import {
   Plus
 } from 'lucide-react'
 import { useTicketBooking } from '@/hooks/useTickets'
-import { PaymentWrapper } from '@/components/payment/PaymentWrapper' // Import PaymentWrapper
-import type { Event, EventPrice, CartItem, BookingSummary } from '@/lib/types/api'
+import { PaymentWrapper } from '@/components/payment/PaymentWrapper'
+import type { Event, EventPrice, BookingSummary } from '@/lib/types/api'
 
 interface BookingFlowProps {
   event: Event
@@ -36,27 +34,21 @@ interface BookingFlowProps {
   onCancel: () => void
 }
 
-type BookingStep = 'select' | 'promotions' | 'payment' | 'confirmation'
+type BookingStep = 'select' | 'payment' | 'confirmation'
 
 export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
   const [currentStep, setCurrentStep] = useState<BookingStep>('select')
   const [selectedPrice, setSelectedPrice] = useState<EventPrice | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [discountCode, setDiscountCode] = useState('')
-  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false)
   const [loyaltyPoints, setLoyaltyPoints] = useState(0)
   const [bookingSummary, setBookingSummary] = useState<BookingSummary | null>(null)
   const [ticketId, setTicketId] = useState<string | null>(null)
-  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'success' | 'error'>('pending')
   const [error, setError] = useState<string | null>(null)
 
   const { bookTicket, applyPromotion, useLoyaltyPoints: useLoyaltyPointsAPI, loading } = useTicketBooking()
 
-  // Calculate pricing
   const subtotal = selectedPrice ? selectedPrice.price * quantity : 0
-  const discount = bookingSummary?.discount || 0
-  const loyaltyDiscount = bookingSummary?.loyaltyPointsUsed || 0
-  const total = subtotal - discount - loyaltyDiscount
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -79,112 +71,53 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
     setQuantity(1)
   }
 
-  const handleApplyPromotion = async () => {
-    if (!ticketId || !discountCode) return
-
-    try {
-      const updatedTicket = await applyPromotion({
-        ticketId,
-        discountCode
-      })
-      
-      // Update booking summary with new discount
-      setBookingSummary(prev => prev ? {
-        ...prev,
-        discount: prev.discount + (prev.total - updatedTicket.totalAmount),
-        total: updatedTicket.totalAmount,
-        appliedPromotion: {
-          code: discountCode,
-          discount: (prev.total - updatedTicket.totalAmount),
-          type: 'percentage' as const
-        }
-      } : null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to apply promotion')
-    }
-  }
-
-  const handleUseLoyaltyPoints = async () => {
-    if (!ticketId || loyaltyPoints <= 0) return
-
-    try {
-      const updatedTicket = await useLoyaltyPointsAPI({
-        ticketId,
-        points: loyaltyPoints
-      })
-      
-      // Update booking summary with loyalty points used
-      setBookingSummary(prev => prev ? {
-        ...prev,
-        loyaltyPointsUsed: loyaltyPoints,
-        total: updatedTicket.totalAmount
-      } : null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to use loyalty points')
-    }
-  }
 
   const handleBookTicket = async () => {
     if (!selectedPrice) return
-
     try {
       const ticket = await bookTicket({
         eventId: event.id,
         eventPriceId: selectedPrice.id,
         quantity,
         discountCode: discountCode || undefined,
-        useLoyaltyPoints
+        useLoyaltyPoints: false
       })
-
       setTicketId(ticket.id)
       setBookingSummary({
-        items: [{
-          eventId: event.id,
-          eventPriceId: selectedPrice.id,
-          quantity,
-          price: selectedPrice.price,
-          eventTitle: event.title || '',
-          eventDate: event.eventDate,
-          venueName: event.venue?.name || '',
-          category: selectedPrice.category || 'General'
+        items: [{ 
+          eventId: event.id, 
+          eventPriceId: selectedPrice.id, 
+          quantity, 
+            price: selectedPrice.price, // unit price
+          eventTitle: event.title || '', 
+          eventDate: event.eventDate, 
+          venueName: event.venue?.name || '',    
+          category: selectedPrice.category || 'General' 
         }],
         subtotal,
         discount: 0,
         loyaltyPointsUsed: 0,
-        loyaltyPointsEarned: Math.floor(subtotal * 0.01), // 1% of subtotal
-        total: subtotal
+        loyaltyPointsEarned: Math.floor(subtotal * 0.01),
+        total: subtotal 
       })
-      console.log("Ticket booked. Ticket ID:", ticket.id, "Booking Summary:", { ...bookingSummary, total: subtotal });
-
-      setCurrentStep('promotions')
+      setCurrentStep('payment')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to book ticket')
     }
   }
 
   const handlePaymentSuccess = (paymentIntent: any) => {
-    // In the new flow, payment success is handled by Stripe's redirect to booking-confirmation page.
-    // This function will primarily be for frontend state updates if needed after redirection.
-    setPaymentStatus('success')
     setCurrentStep('confirmation')
-    // The onSuccess callback to the parent component (BookingPage) should now be triggered
-    // by the booking-confirmation page itself, based on URL parameters.
-    // We can still trigger it here for immediate feedback in the booking flow.
-    if (ticketId) {
-      onSuccess(ticketId);
-    }
+    if (ticketId) onSuccess(ticketId)
   }
 
   const handlePaymentError = (error: string) => {
-    setPaymentStatus('error')
     setError(error)
-    // The onError callback can still be used for displaying immediate error feedback.
   }
 
   const renderStepIndicator = () => {
     const steps = [
       { key: 'select', label: 'Select Tickets', icon: Ticket },
-      { key: 'promotions', label: 'Promotions', icon: Gift },
       { key: 'payment', label: 'Payment', icon: CreditCard },
       { key: 'confirmation', label: 'Confirmation', icon: CheckCircle }
     ]
@@ -292,32 +225,42 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
       {selectedPrice && (
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader>
-            <CardTitle className="text-white">Quantity</CardTitle>
+            <CardTitle className="text-white">Select Quantity</CardTitle>
+            <CardDescription className="text-gray-400">
+              Choose how many tickets you want to purchase
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuantityChange(quantity - 1)}
-                  disabled={quantity <= 1}
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <span className="text-white text-lg font-medium">{quantity}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuantityChange(quantity + 1)}
-                  disabled={quantity >= selectedPrice.stock}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuantityChange(quantity - 1)}
+                disabled={quantity <= 1}
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <span className="text-white text-xl font-medium px-4">{quantity}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuantityChange(quantity + 1)}
+                disabled={quantity >= selectedPrice.stock}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-600">
+              <div className="text-center">
+                <p className="text-gray-400 text-sm">Unit Price</p>
+                <p className="text-lg font-bold text-white">
+                  LKR {selectedPrice.price.toFixed(2)}
+                </p>
               </div>
-              <div className="text-right">
-                <p className="text-gray-400">Total</p>
-                <p className="text-2xl font-bold text-white">
+              <div className="text-center">
+                <p className="text-gray-400 text-sm">Total Price</p>
+                <p className="text-lg font-bold text-purple-400">
                   LKR {(selectedPrice.price * quantity).toFixed(2)}
                 </p>
               </div>
@@ -342,7 +285,7 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
             </>
           ) : (
             <>
-              Continue to Promotions
+              Continue to Payment
               <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}
@@ -351,199 +294,28 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
     </div>
   )
 
-  const renderPromotionsStep = () => (
-    <div className="space-y-6">
-      <Card className="bg-gray-800 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white">Promotions & Loyalty Points</CardTitle>
-          <CardDescription className="text-gray-400">
-            Apply discount codes or use loyalty points
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Discount Code */}
-          <div className="space-y-2">
-            <Label className="text-gray-300">Discount Code</Label>
-            <div className="flex space-x-2">
-              <Input
-                value={discountCode}
-                onChange={(e) => setDiscountCode(e.target.value)}
-                placeholder="Enter discount code"
-                className="bg-gray-900 border-gray-600 text-white"
-              />
-              <Button
-                onClick={handleApplyPromotion}
-                disabled={!discountCode || loading}
-                variant="outline"
-              >
-                Apply
-              </Button>
-            </div>
-          </div>
 
-          {/* Loyalty Points */}
-          <div className="space-y-2">
-            <Label className="text-gray-300">Loyalty Points</Label>
-            <div className="flex items-center space-x-2">
-              <Star className="h-4 w-4 text-yellow-400" />
-              <span className="text-gray-300">Available: 1,250 points</span>
-            </div>
-            <div className="flex space-x-2">
-              <Input
-                type="number"
-                value={loyaltyPoints}
-                onChange={(e) => setLoyaltyPoints(Number(e.target.value))}
-                placeholder="Enter points to use"
-                className="bg-gray-900 border-gray-600 text-white"
-                max={1250}
-              />
-              <Button
-                onClick={handleUseLoyaltyPoints}
-                disabled={loyaltyPoints <= 0 || loading}
-                variant="outline"
-              >
-                Use Points
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Booking Summary */}
-      {bookingSummary && (
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-white">Booking Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Subtotal</span>
-                <span className="text-white">LKR {bookingSummary.subtotal.toFixed(2)}</span>
-              </div>
-              {bookingSummary.discount > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Discount</span>
-                  <span className="text-green-400">-LKR {bookingSummary.discount.toFixed(2)}</span>
-                </div>
-              )}
-              {bookingSummary.loyaltyPointsUsed > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Loyalty Points</span>
-                  <span className="text-green-400">-LKR {bookingSummary.loyaltyPointsUsed.toFixed(2)}</span>
-                </div>
-              )}
-              <Separator />
-              <div className="flex justify-between text-lg font-bold">
-                <span className="text-white">Total</span>
-                <span className="text-white">LKR {bookingSummary.total.toFixed(2)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="flex justify-between">
-        <Button
-          variant="outline"
-          onClick={() => setCurrentStep('select')}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <Button
-          onClick={() => {
-            if (bookingSummary && ticketId) {
-              setCurrentStep('payment');
-            } else {
-              setError("Booking summary or ticket ID is missing. Please re-select your tickets.");
-            }
-          }}
-          disabled={!bookingSummary || !ticketId || loading}
-          className="bg-purple-600 hover:bg-purple-700"
-        >
-          Continue to Payment
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  )
-
-  // const renderPaymentStep = () => (
-  //   <div className="space-y-6">
-  //     <Card className="bg-gray-800 border-gray-700">
-  //       <CardHeader>
-  //         <CardTitle className="text-white">Payment</CardTitle>
-  //         <CardDescription className="text-gray-400">
-  //           Complete your purchase securely
-  //         </CardDescription>
-  //       </CardHeader>
-  //       <CardContent>
-  //         {bookingSummary && ticketId && (
-  //           <StripePaymentForm
-  //             amount={bookingSummary.total}
-  //             currency="LKR"
-  //             ticketId={ticketId}
-  //             onSuccess={handlePaymentSuccess}
-  //             onError={handlePaymentError}
-  //           />
-  //         )}
-  //       </CardContent>
-  //     </Card>
-
-  //     <div className="flex justify-between">
-  //       <Button
-  //         variant="outline"
-  //         onClick={() => setCurrentStep('promotions')}
-  //       >
-  //         <ArrowLeft className="mr-2 h-4 w-4" />
-  //         Back
-  //       </Button>
-  //     </div>
-  //   </div>
-  // )
-
-const renderPaymentStep = () => {
-  console.log("Rendering Payment Step. Booking Summary:", bookingSummary, "Ticket ID:", ticketId);
-  return (
-    <div className="space-y-6">
-      <Card className="bg-gray-800 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white">Payment</CardTitle>
-          <CardDescription className="text-gray-400">
-            Complete your purchase securely
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {bookingSummary && ticketId ? (
-            <PaymentWrapper
-              ticketId={ticketId}
-              totalAmount={bookingSummary.total}
-              eventTitle={event.title}
-              onPaymentSuccess={handlePaymentSuccess} // Keep for internal state if needed
-              onPaymentError={handlePaymentError} // Keep for internal state if needed
-            />
-          ) : (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>Booking summary or ticket ID is missing. Cannot proceed to payment.</AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-between">
-        <Button
-          variant="outline"
-          onClick={() => setCurrentStep('promotions')}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-      </div>
-    </div>
-  )
-}
+  const renderPaymentStep = () => {
+    console.log("BookingFlow - Payment Step Debug:");
+    console.log("Selected Price Object:", selectedPrice);
+    console.log("Unit Price being passed:", selectedPrice?.price || 0);
+    console.log("Quantity being passed:", quantity);
+    console.log("Expected total should be:", (selectedPrice?.price || 0) * quantity);
+    
+    const unitPriceActual = selectedPrice?.price || 0;
+    console.log("Unit Price Actual:", unitPriceActual);
+    
+    return (
+      <PaymentWrapper
+        ticketId={ticketId!}
+        unitPrice={unitPriceActual}   // already per ticket
+        quantity={quantity}
+        eventTitle={event.title || 'Event'}
+        onPaymentSuccess={handlePaymentSuccess}
+        onPaymentError={handlePaymentError}
+      />
+    )
+  }
   const renderConfirmationStep = () => (
     <div className="text-center space-y-6">
       <div className="flex justify-center">
@@ -584,7 +356,6 @@ const renderPaymentStep = () => {
       {renderStepIndicator()}
 
       {currentStep === 'select' && renderSelectStep()}
-      {currentStep === 'promotions' && renderPromotionsStep()}
       {currentStep === 'payment' && renderPaymentStep()}
       {currentStep === 'confirmation' && renderConfirmationStep()}
     </div>
