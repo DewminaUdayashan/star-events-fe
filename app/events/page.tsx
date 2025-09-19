@@ -45,11 +45,50 @@ export default function EventsPage() {
   }, []);
 
   // Fetch venues for the dropdown
-  const { data: venues = [], isLoading: venuesLoading } = useVenues();
+  const { data: venuesData = [], isLoading: venuesLoading } = useVenues();
 
   // Fetch categories for the dropdown
-  const { data: categories = [], isLoading: categoriesLoading } =
+  const { data: categoriesData = [], isLoading: categoriesLoading } =
     useCategories();
+
+  // Handle API response structures for venues and categories
+  const venues = useMemo(() => {
+    console.log("EventsPage - Raw venues data:", venuesData);
+
+    if (!venuesData) return [];
+
+    let venuesArray = venuesData;
+    const data = venuesData as any;
+
+    // Handle nested structures
+    if (typeof data === "object" && !Array.isArray(data) && data.data) {
+      venuesArray = data.data;
+    }
+    if (typeof data === "object" && !Array.isArray(data) && data.$values) {
+      venuesArray = data.$values;
+    }
+
+    return Array.isArray(venuesArray) ? venuesArray : [];
+  }, [venuesData]);
+
+  const categories = useMemo(() => {
+    console.log("EventsPage - Raw categories data:", categoriesData);
+
+    if (!categoriesData) return [];
+
+    let categoriesArray = categoriesData;
+    const data = categoriesData as any;
+
+    // Handle nested structures
+    if (typeof data === "object" && !Array.isArray(data) && data.data) {
+      categoriesArray = data.data;
+    }
+    if (typeof data === "object" && !Array.isArray(data) && data.$values) {
+      categoriesArray = data.$values;
+    }
+
+    return Array.isArray(categoriesArray) ? categoriesArray : [];
+  }, [categoriesData]);
 
   // Prepare filters for the query
   const filters = useMemo<EventFilters>(() => {
@@ -67,7 +106,41 @@ export default function EventsPage() {
 
   // Sort events
   const sortedEvents = useMemo(() => {
-    const eventsCopy = [...events];
+    console.log("EventsPage - Raw events data:", events);
+    console.log("EventsPage - Is events array?", Array.isArray(events));
+
+    if (!events) return [];
+
+    // Handle different possible API response structures
+    let eventsArray = events;
+    const eventsData = events as any; // Cast to any for debugging
+
+    // If events is an object with a data property (common API pattern)
+    if (
+      typeof eventsData === "object" &&
+      !Array.isArray(eventsData) &&
+      eventsData.data
+    ) {
+      eventsArray = eventsData.data;
+    }
+
+    // If events is an object with a $values property (.NET API pattern)
+    if (
+      typeof eventsData === "object" &&
+      !Array.isArray(eventsData) &&
+      eventsData.$values
+    ) {
+      eventsArray = eventsData.$values;
+    }
+
+    console.log("EventsPage - Final events array:", eventsArray);
+
+    if (!Array.isArray(eventsArray)) {
+      console.warn("EventsPage - eventsArray is not an array:", eventsArray);
+      return [];
+    }
+
+    const eventsCopy = [...eventsArray];
 
     switch (sortBy) {
       case "date":
