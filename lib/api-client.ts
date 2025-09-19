@@ -84,6 +84,11 @@ class ApiClient {
 
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.get<T>(url, config)
+    // Handle .NET serialization format with $values property
+    const data = response.data as any
+    if (data && typeof data === 'object' && '$values' in data && Array.isArray(data.$values)) {
+      return data.$values as T
+    }
     return response.data
   }
 

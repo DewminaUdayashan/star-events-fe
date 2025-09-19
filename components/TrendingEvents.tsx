@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, MapPin, Users, TrendingUp } from "lucide-react";
-import { useEvents } from "@/lib/services";
+import { useEvents } from "@/lib/services/events.service";
 import { getImageUrl } from "@/lib/utils";
 
 export default function TrendingEvents() {
