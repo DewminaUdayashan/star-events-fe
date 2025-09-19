@@ -111,9 +111,35 @@ class ApiClient {
     return this.token;
   }
 
+  private processResponse(data: any): any {
+    // Handle .NET serialization format with $values property recursively
+    if (data && typeof data === "object") {
+      if ("$values" in data && Array.isArray(data.$values)) {
+        // Process each item in the array recursively
+        return data.$values.map((item: any) => this.processResponse(item));
+      }
+
+      // Process nested objects
+      if (Array.isArray(data)) {
+        return data.map((item: any) => this.processResponse(item));
+      }
+
+      // Process object properties
+      const processedData: any = {};
+      for (const key in data) {
+        if (data.hasOwnProperty(key)) {
+          processedData[key] = this.processResponse(data[key]);
+        }
+      }
+      return processedData;
+    }
+
+    return data;
+  }
+
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.get<T>(url, config);
-    return response.data;
+    return this.processResponse(response.data) as T;
   }
 
   async post<T>(
@@ -122,7 +148,7 @@ class ApiClient {
     config?: AxiosRequestConfig
   ): Promise<T> {
     const response = await this.client.post<T>(url, data, config);
-    return response.data;
+    return this.processResponse(response.data) as T;
   }
 
   async put<T>(
@@ -131,12 +157,12 @@ class ApiClient {
     config?: AxiosRequestConfig
   ): Promise<T> {
     const response = await this.client.put<T>(url, data, config);
-    return response.data;
+    return this.processResponse(response.data) as T;
   }
 
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.delete<T>(url, config);
-    return response.data;
+    return this.processResponse(response.data) as T;
   }
 
   async patch<T>(
@@ -145,7 +171,7 @@ class ApiClient {
     config?: AxiosRequestConfig
   ): Promise<T> {
     const response = await this.client.patch<T>(url, data, config);
-    return response.data;
+    return this.processResponse(response.data) as T;
   }
 }
 
