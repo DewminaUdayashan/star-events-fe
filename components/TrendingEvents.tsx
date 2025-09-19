@@ -17,9 +17,44 @@ export default function TrendingEvents() {
 
   // Filter and sort events to show trending/featured ones
   const trendingEvents = useMemo(() => {
+    console.log("TrendingEvents - Raw events data:", events);
+    console.log("TrendingEvents - Is events array?", Array.isArray(events));
+
     if (!events) return [];
 
-    return events
+    // Handle different possible API response structures
+    let eventsArray = events;
+    const eventsData = events as any; // Cast to any for debugging
+
+    // If events is an object with a data property (common API pattern)
+    if (
+      typeof eventsData === "object" &&
+      !Array.isArray(eventsData) &&
+      eventsData.data
+    ) {
+      eventsArray = eventsData.data;
+    }
+
+    // If events is an object with a $values property (.NET API pattern)
+    if (
+      typeof eventsData === "object" &&
+      !Array.isArray(eventsData) &&
+      eventsData.$values
+    ) {
+      eventsArray = eventsData.$values;
+    }
+
+    console.log("TrendingEvents - Final events array:", eventsArray);
+
+    if (!Array.isArray(eventsArray)) {
+      console.warn(
+        "TrendingEvents - eventsArray is not an array:",
+        eventsArray
+      );
+      return [];
+    }
+
+    return eventsArray
       .filter((event: any) => event.isPublished)
       .sort((a: any, b: any) => {
         // Prioritize featured events, then sort by date

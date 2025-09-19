@@ -76,6 +76,30 @@ export class AuthService {
     }
   }
 
+  async verifyEmail(email: string, verificationCode: string): Promise<any> {
+    const response = await apiClient.post<{
+      data: any;
+      message: string;
+      statusCode: number;
+    }>("/api/Auth/verify-email", {
+      email,
+      verificationCode,
+    });
+
+    return response;
+  }
+
+  async resendVerificationCode(email: string): Promise<any> {
+    const response = await apiClient.post<{
+      message: string;
+      statusCode: number;
+    }>("/api/Auth/resend-verification", {
+      email,
+    });
+
+    return response;
+  }
+
   isAuthenticated(): boolean {
     return !!apiClient.getToken();
   }
