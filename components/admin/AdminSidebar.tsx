@@ -13,6 +13,7 @@ import {
   DollarSign,
   Activity,
   PieChart,
+  UserCheck,
 } from "lucide-react";
 
 const adminNavItems = [
@@ -30,6 +31,11 @@ const adminNavItems = [
     title: "Organizers",
     href: "/admin/organizers",
     icon: Users,
+  },
+  {
+    title: "Users",
+    href: "/admin/users",
+    icon: UserCheck,
   },
   {
     title: "Venues",
