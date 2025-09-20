@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { useTicketBooking } from '@/hooks/useTickets'
 import { PaymentWrapper } from '@/components/payment/PaymentWrapper'
+import { LoyaltyPointsCard } from '@/components/loyalty/LoyaltyPointsCard'
 import type { Event, EventPrice, BookingSummary } from '@/lib/types/api'
 
 interface BookingFlowProps {
@@ -41,14 +42,17 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
   const [selectedPrice, setSelectedPrice] = useState<EventPrice | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [discountCode, setDiscountCode] = useState('')
-  const [loyaltyPoints, setLoyaltyPoints] = useState(0)
+  const [loyaltyPointsRedeemed, setLoyaltyPointsRedeemed] = useState(0)
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)
   const [bookingSummary, setBookingSummary] = useState<BookingSummary | null>(null)
   const [ticketId, setTicketId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const { bookTicket, applyPromotion, useLoyaltyPoints: useLoyaltyPointsAPI, loading } = useTicketBooking()
 
+  // Final calculation rule: Total = (Quantity × UnitPrice) – LoyaltyPointsRedeemed
   const subtotal = selectedPrice ? selectedPrice.price * quantity : 0
+  const finalTotal = subtotal - loyaltyDiscount
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -69,12 +73,26 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
   const handleSelectPrice = (price: EventPrice) => {
     setSelectedPrice(price)
     setQuantity(1)
+    // Reset loyalty points when price changes
+    setLoyaltyPointsRedeemed(0)
+    setLoyaltyDiscount(0)
+  }
+
+  const handleLoyaltyPointsRedeemed = (points: number, discountValue: number) => {
+    setLoyaltyPointsRedeemed(points)
+    setLoyaltyDiscount(discountValue)
+  }
+
+  const handleLoyaltyPointsCleared = () => {
+    setLoyaltyPointsRedeemed(0)
+    setLoyaltyDiscount(0)
   }
 
 
   const handleBookTicket = async () => {
     if (!selectedPrice) return
     try {
+      // First book the ticket
       const ticket = await bookTicket({
         eventId: event.id,
         eventPriceId: selectedPrice.id,
@@ -83,22 +101,56 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
         useLoyaltyPoints: false
       })
       setTicketId(ticket.id)
+
+      // Store complete booking data for confirmation page
+      const completeBookingData = {
+        ticketId: ticket.id,
+        eventTitle: event.title || '',
+        category: selectedPrice.category || 'General',
+        quantity: quantity,
+        unitPrice: selectedPrice.price,
+        subtotal: subtotal,
+        loyaltyPointsRedeemed: loyaltyPointsRedeemed,
+        loyaltyDiscount: loyaltyDiscount,
+        finalTotal: finalTotal,
+        pointsToEarn: Math.floor(finalTotal * 0.10),
+        timestamp: new Date().toISOString()
+      }
+
+      // Store in localStorage for confirmation page
+      localStorage.setItem('currentBookingData', JSON.stringify(completeBookingData))
+      console.log('Stored booking data:', completeBookingData)
+
+      // If loyalty points were selected, redeem them
+      if (loyaltyPointsRedeemed > 0) {
+        try {
+          await useLoyaltyPointsAPI({
+            TicketId: ticket.id,
+            Points: loyaltyPointsRedeemed
+          })
+        } catch (loyaltyErr) {
+          console.error('Failed to apply loyalty points:', loyaltyErr)
+          // Continue with booking even if loyalty points fail
+          setError('Booking successful, but failed to apply loyalty points discount')
+        }
+      }
+
       setBookingSummary({
         items: [{ 
           eventId: event.id, 
           eventPriceId: selectedPrice.id, 
           quantity, 
-            price: selectedPrice.price, // unit price
+          price: selectedPrice.price, // unit price
           eventTitle: event.title || '', 
           eventDate: event.eventDate, 
           venueName: event.venue?.name || '',    
           category: selectedPrice.category || 'General' 
         }],
         subtotal,
-        discount: 0,
-        loyaltyPointsUsed: 0,
-        loyaltyPointsEarned: Math.floor(subtotal * 0.01),
-        total: subtotal 
+        discount: loyaltyDiscount,
+        loyaltyPointsUsed: loyaltyPointsRedeemed,
+        loyaltyPointsEarned: Math.floor(finalTotal * 0.10), // 10% of final amount
+        total: finalTotal 
       })
       setCurrentStep('payment')
     } catch (err) {
@@ -269,6 +321,42 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
         </Card>
       )}
 
+      {/* Loyalty Points Section */}
+      {selectedPrice && (
+        <LoyaltyPointsCard
+          purchaseAmount={subtotal}
+          onPointsRedeemed={handleLoyaltyPointsRedeemed}
+          onPointsCleared={handleLoyaltyPointsCleared}
+          disabled={loading}
+        />
+      )}
+
+      {/* Order Summary */}
+      {selectedPrice && (
+        <Card className="bg-gray-800 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-white">Order Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-400">Subtotal ({quantity} tickets)</span>
+              <span className="text-white">LKR {subtotal.toFixed(2)}</span>
+            </div>
+            {loyaltyDiscount > 0 && (
+              <div className="flex justify-between text-purple-400">
+                <span>Loyalty Points Discount ({loyaltyPointsRedeemed.toLocaleString()} pts)</span>
+                <span>-LKR {loyaltyDiscount.toFixed(2)}</span>
+              </div>
+            )}
+            <Separator className="bg-gray-600" />
+            <div className="flex justify-between text-lg font-bold">
+              <span className="text-white">Total</span>
+              <span className="text-purple-400">LKR {finalTotal.toFixed(2)}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex justify-end space-x-4">
         <Button variant="outline" onClick={onCancel}>
           Cancel
@@ -300,20 +388,50 @@ export function BookingFlow({ event, onSuccess, onCancel }: BookingFlowProps) {
     console.log("Selected Price Object:", selectedPrice);
     console.log("Unit Price being passed:", selectedPrice?.price || 0);
     console.log("Quantity being passed:", quantity);
-    console.log("Expected total should be:", (selectedPrice?.price || 0) * quantity);
-    
-    const unitPriceActual = selectedPrice?.price || 0;
-    console.log("Unit Price Actual:", unitPriceActual);
+    console.log("Subtotal:", subtotal);
+    console.log("Loyalty Discount:", loyaltyDiscount);
+    console.log("Final Total:", finalTotal);
     
     return (
-      <PaymentWrapper
-        ticketId={ticketId!}
-        unitPrice={unitPriceActual}   // already per ticket
-        quantity={quantity}
-        eventTitle={event.title || 'Event'}
-        onPaymentSuccess={handlePaymentSuccess}
-        onPaymentError={handlePaymentError}
-      />
+      <div className="space-y-6">
+        {/* Order Summary for Payment Step */}
+        <Card className="bg-gray-800 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-white">Payment Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-400">Event</span>
+              <span className="text-white">{event.title}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Tickets ({quantity})</span>
+              <span className="text-white">LKR {subtotal.toFixed(2)}</span>
+            </div>
+            {loyaltyDiscount > 0 && (
+              <div className="flex justify-between text-purple-400">
+                <span>Loyalty Discount</span>
+                <span>-LKR {loyaltyDiscount.toFixed(2)}</span>
+              </div>
+            )}
+            <Separator className="bg-gray-600" />
+            <div className="flex justify-between text-lg font-bold">
+              <span className="text-white">Total to Pay</span>
+              <span className="text-purple-400">LKR {finalTotal.toFixed(2)}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <PaymentWrapper
+          ticketId={ticketId!}
+          unitPrice={selectedPrice?.price || 0}  // Original unit price (before discount)
+          quantity={quantity}
+          totalAmount={finalTotal}              // Final total after loyalty discount
+          eventTitle={event.title || 'Event'}
+          onPaymentSuccess={handlePaymentSuccess}
+          onPaymentError={handlePaymentError}
+        />
+      </div>
     )
   }
   const renderConfirmationStep = () => (

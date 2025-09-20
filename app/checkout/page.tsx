@@ -32,8 +32,11 @@ import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTicketBooking } from '@/hooks/useTickets'
 import { usePaymentProcessing } from '@/hooks/usePayments'
+import { useLoyaltyPoints } from '@/hooks/useLoyaltyPoints'
+import { loyaltyService } from '@/lib/services/loyaltyService'
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm'
-import type { CartItem } from '@/lib/types/api'
+import { LoyaltyPointsCard } from '@/components/loyalty/LoyaltyPointsCard'
+import type { CartItem } from '@/types/event'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -42,11 +45,12 @@ export default function CheckoutPage() {
   const { user } = useAuth()
   const { bookTicket, applyPromotion, useLoyaltyPoints: applyLoyaltyPoints, loading: bookingLoading } = useTicketBooking()
   const { processPayment, loading: paymentLoading } = usePaymentProcessing()
+  const { redeemPoints } = useLoyaltyPoints()
 
   const [currentStep, setCurrentStep] = useState<'review' | 'payment' | 'confirmation'>('review')
   const [discountCode, setDiscountCode] = useState('')
-  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false)
-  const [loyaltyPoints, setLoyaltyPoints] = useState(0)
+  const [loyaltyPointsRedeemed, setLoyaltyPointsRedeemed] = useState(0)
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)
   const [appliedDiscount, setAppliedDiscount] = useState<{ code: string; amount: number } | null>(null)
   const [billingInfo, setBillingInfo] = useState({
     fullName: user?.fullName || '',
@@ -77,29 +81,46 @@ export default function CheckoutPage() {
   }, [user, router])
 
   const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0)
+    // Subtotal = Quantity × UnitPrice for each item
+    return cartItems.reduce((total, item) => total + (item.ticketType.price * item.quantity), 0)
   }
 
   const calculateDiscount = () => {
     return appliedDiscount ? appliedDiscount.amount : 0
   }
 
-  const calculateLoyaltyDiscount = () => {
-    return useLoyaltyPoints ? Math.min(loyaltyPoints * 0.01, calculateSubtotal() * 0.1) : 0 // 1 point = 1 cent, max 10% discount
-  }
-
   const calculateTotal = () => {
-    const subtotal = calculateSubtotal()
-    const discount = calculateDiscount()
-    const loyaltyDiscount = calculateLoyaltyDiscount()
-    return Math.max(0, subtotal - discount - loyaltyDiscount)
+    // Final calculation rule: Total = (Quantity × UnitPrice) – LoyaltyPointsRedeemed
+    const subtotal = calculateSubtotal() // (Quantity × UnitPrice)
+    const discount = calculateDiscount() // Other promotional discounts
+    return Math.max(0, subtotal - discount - loyaltyDiscount) // – LoyaltyPointsRedeemed
   }
 
-  const handleQuantityChange = (itemId: string, newQuantity: number) => {
+  const calculateTotalDiscount = () => {
+    return calculateDiscount() + loyaltyDiscount
+  }
+
+  const calculatePointsToEarn = () => {
+    const paidAmount = calculateTotal()
+    return loyaltyService.calculateEarnedPoints(paidAmount)
+  }
+
+  const handleLoyaltyPointsRedeemed = (points: number, discountValue: number) => {
+    setLoyaltyPointsRedeemed(points)
+    setLoyaltyDiscount(discountValue)
+  }
+
+  const handleLoyaltyPointsCleared = () => {
+    setLoyaltyPointsRedeemed(0)
+    setLoyaltyDiscount(0)
+  }
+
+  const handleQuantityChange = (itemKey: string, newQuantity: number) => {
+    const [eventId, ticketTypeId] = itemKey.split('-')
     if (newQuantity <= 0) {
-      removeItem(itemId)
+      removeItem(eventId, ticketTypeId)
     } else {
-      updateQuantity(itemId, newQuantity)
+      updateQuantity(eventId, ticketTypeId, newQuantity)
     }
   }
 
@@ -132,14 +153,47 @@ export default function CheckoutPage() {
 
   const handlePaymentSuccess = async (paymentIntent: any) => {
     try {
+      // Calculate all the booking details
+      const subtotal = calculateSubtotal()
+      const totalDiscount = calculateTotalDiscount()
+      const finalTotal = calculateTotal()
+      const pointsToEarn = calculatePointsToEarn()
+      
+      // Get the first cart item for display (could be enhanced for multiple items)
+      const firstItem = cartItems[0]
+      
+      // Store booking data in localStorage for the confirmation page
+      const bookingData = {
+        ticketId: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+        subtotal: subtotal,
+        totalDiscount: totalDiscount,
+        finalTotal: finalTotal,
+        pointsToEarn: pointsToEarn,
+        loyaltyPointsRedeemed: loyaltyPointsRedeemed,
+        loyaltyDiscount: loyaltyDiscount,
+        appliedDiscount: appliedDiscount,
+        quantity: cartItems.reduce((total, item) => total + item.quantity, 0),
+        unitPrice: firstItem ? firstItem.ticketType.price : 0,
+        eventTitle: firstItem ? firstItem.event.title : 'Event',
+        category: firstItem ? firstItem.ticketType.name : 'General',
+        eventDate: firstItem ? firstItem.event.eventDate : new Date().toISOString(),
+        venueName: firstItem ? firstItem.event.venue?.name : 'Venue',
+        paymentIntentId: paymentIntent.id || paymentIntent.payment_intent?.id,
+        sessionId: paymentIntent.id || 'unknown',
+        bookingDate: new Date().toISOString()
+      }
+      
+      console.log('Storing booking data:', bookingData)
+      localStorage.setItem('currentBookingData', JSON.stringify(bookingData))
+      
       setCurrentStep('confirmation')
       setSuccess('Payment successful! Your tickets have been booked.')
       
-      // Clear cart after successful payment
+      // Clear cart and redirect to booking confirmation
       setTimeout(() => {
         clearCart()
-        router.push('/my-tickets')
-      }, 3000)
+        router.push(`/booking-confirmation?success=true&session_id=${bookingData.sessionId}&ticketId=${bookingData.ticketId}`)
+      }, 2000)
     } catch (err) {
       setError('Payment successful but failed to process tickets. Please contact support.')
     }
@@ -223,6 +277,38 @@ export default function CheckoutPage() {
             {/* Review Step */}
             {currentStep === 'review' && (
               <>
+                {/* Financial Summary Card */}
+                <Card className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/20">
+                  <CardContent className="pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <p className="text-gray-400 text-sm">Original Price</p>
+                        <p className="text-white text-lg font-semibold">LKR {calculateSubtotal().toFixed(2)}</p>
+                      </div>
+                      {calculateTotalDiscount() > 0 && (
+                        <div className="text-center">
+                          <p className="text-gray-400 text-sm">Total Savings</p>
+                          <p className="text-green-400 text-lg font-semibold">-LKR {calculateTotalDiscount().toFixed(2)}</p>
+                        </div>
+                      )}
+                      <div className="text-center">
+                        <p className="text-gray-400 text-sm">You Pay</p>
+                        <p className="text-purple-400 text-xl font-bold">LKR {calculateTotal().toFixed(2)}</p>
+                      </div>
+                    </div>
+                    {calculatePointsToEarn() > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-700">
+                        <div className="flex items-center justify-center space-x-2">
+                          <Star className="h-4 w-4 text-yellow-400" />
+                          <span className="text-gray-300 text-sm">
+                            You'll earn <span className="font-semibold text-yellow-400">{calculatePointsToEarn().toLocaleString()} loyalty points</span> worth LKR {loyaltyService.calculateDiscountValue(calculatePointsToEarn()).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {/* Order Summary */}
                 <Card className="bg-gray-800 border-gray-700">
                   <CardHeader>
@@ -233,18 +319,19 @@ export default function CheckoutPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {cartItems.map((item) => (
-                      <div key={`${item.eventId}-${item.eventPriceId}`} className="flex items-center space-x-4 p-4 bg-gray-900 rounded-lg">
+                      <div key={`${item.eventId}-${item.ticketTypeId}`} className="flex items-center space-x-4 p-4 bg-gray-900 rounded-lg">
                         <div className="flex-1">
-                          <h3 className="text-white font-medium">{item.eventTitle}</h3>
-                          <p className="text-gray-400 text-sm">{item.category}</p>
-                          <p className="text-gray-400 text-sm">{formatDate(item.eventDate)}</p>
-                          <p className="text-gray-400 text-sm">{item.venueName}</p>
+                          <h3 className="text-white font-medium">{item.event.title}</h3>
+                          <p className="text-gray-400 text-sm">{item.event.category}</p>
+                          <p className="text-gray-400 text-sm">{formatDate(item.event.eventDate)}</p>
+                          <p className="text-gray-400 text-sm">{item.event.venue?.name}</p>
+                          <p className="text-gray-400 text-sm font-medium">{item.ticketType.name}</p>
                         </div>
                         <div className="flex items-center space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleQuantityChange(`${item.eventId}-${item.eventPriceId}`, item.quantity - 1)}
+                            onClick={() => handleQuantityChange(`${item.eventId}-${item.ticketTypeId}`, item.quantity - 1)}
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
@@ -252,19 +339,19 @@ export default function CheckoutPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleQuantityChange(`${item.eventId}-${item.eventPriceId}`, item.quantity + 1)}
+                            onClick={() => handleQuantityChange(`${item.eventId}-${item.ticketTypeId}`, item.quantity + 1)}
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
                         </div>
                         <div className="text-right">
-                          <p className="text-white font-medium">LKR {(item.price * item.quantity).toFixed(2)}</p>
-                          <p className="text-gray-400 text-sm">LKR {item.price.toFixed(2)} each</p>
+                          <p className="text-white font-medium">LKR {(item.ticketType.price * item.quantity).toFixed(2)}</p>
+                          <p className="text-gray-400 text-sm">LKR {item.ticketType.price.toFixed(2)} each</p>
                         </div>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeItem(`${item.eventId}-${item.eventPriceId}`)}
+                          onClick={() => removeItem(item.eventId, item.ticketTypeId)}
                           className="text-red-400 hover:text-red-300"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -311,35 +398,16 @@ export default function CheckoutPage() {
                       )}
                     </div>
 
-                    {/* Loyalty Points */}
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="loyalty"
-                          checked={useLoyaltyPoints}
-                          onCheckedChange={setUseLoyaltyPoints}
-                        />
-                        <Label htmlFor="loyalty" className="text-gray-300">
-                          Use Loyalty Points
-                        </Label>
-                      </div>
-                      {useLoyaltyPoints && (
-                        <div className="flex items-center space-x-2">
-                          <Star className="h-4 w-4 text-yellow-400" />
-                          <span className="text-gray-300">Available: 1,250 points</span>
-                          <Input
-                            type="number"
-                            value={loyaltyPoints}
-                            onChange={(e) => setLoyaltyPoints(Number(e.target.value))}
-                            placeholder="Enter points to use"
-                            className="bg-gray-900 border-gray-600 text-white w-32"
-                            max={1250}
-                          />
-                        </div>
-                      )}
-                    </div>
                   </CardContent>
                 </Card>
+
+                {/* Loyalty Points */}
+                <LoyaltyPointsCard
+                  purchaseAmount={calculateSubtotal()}
+                  onPointsRedeemed={handleLoyaltyPointsRedeemed}
+                  onPointsCleared={handleLoyaltyPointsCleared}
+                  disabled={bookingLoading || paymentLoading}
+                />
 
                 {/* Billing Information */}
                 <Card className="bg-gray-800 border-gray-700">
@@ -413,7 +481,7 @@ export default function CheckoutPage() {
                       <Checkbox
                         id="terms"
                         checked={agreedToTerms}
-                        onCheckedChange={setAgreedToTerms}
+                        onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
                         className="mt-1"
                       />
                       <Label htmlFor="terms" className="text-gray-300 text-sm">
@@ -499,23 +567,56 @@ export default function CheckoutPage() {
                     <span className="text-gray-400">Subtotal</span>
                     <span className="text-white">LKR {calculateSubtotal().toFixed(2)}</span>
                   </div>
-                  {appliedDiscount && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Discount ({appliedDiscount.code})</span>
-                      <span className="text-green-400">-LKR {appliedDiscount.amount.toFixed(2)}</span>
-                    </div>
+                  
+                  {/* Discounts Section */}
+                  {(appliedDiscount || loyaltyDiscount > 0) && (
+                    <>
+                      {appliedDiscount && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Discount ({appliedDiscount.code})</span>
+                          <span className="text-green-400">-LKR {appliedDiscount.amount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {loyaltyDiscount > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Loyalty Points ({loyaltyPointsRedeemed.toLocaleString()} pts)</span>
+                          <span className="text-purple-400">-LKR {loyaltyDiscount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      
+                      {/* Total Discount */}
+                      {calculateTotalDiscount() > 0 && (
+                        <div className="flex justify-between text-sm bg-green-900/20 px-2 py-1 rounded">
+                          <span className="text-green-300 font-medium">Total Savings</span>
+                          <span className="text-green-300 font-medium">-LKR {calculateTotalDiscount().toFixed(2)}</span>
+                        </div>
+                      )}
+                    </>
                   )}
-                  {useLoyaltyPoints && loyaltyPoints > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Loyalty Points</span>
-                      <span className="text-green-400">-LKR {calculateLoyaltyDiscount().toFixed(2)}</span>
-                    </div>
-                  )}
+                  
                   <Separator className="bg-gray-700" />
+                  
+                  {/* Final Amount to Pay */}
                   <div className="flex justify-between text-lg font-bold">
-                    <span className="text-white">Total</span>
+                    <span className="text-white">You Pay</span>
                     <span className="text-white">LKR {calculateTotal().toFixed(2)}</span>
                   </div>
+                  
+                  {/* Loyalty Points to Earn */}
+                  {calculatePointsToEarn() > 0 && (
+                    <div className="bg-purple-900/20 px-3 py-2 rounded-lg border border-purple-500/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Star className="h-4 w-4 text-purple-400" />
+                          <span className="text-purple-300 text-sm font-medium">Points You'll Earn</span>
+                        </div>
+                        <span className="text-purple-300 font-bold">+{calculatePointsToEarn().toLocaleString()}</span>
+                      </div>
+                      <p className="text-purple-400 text-xs mt-1">
+                        Worth LKR {loyaltyService.calculateDiscountValue(calculatePointsToEarn()).toFixed(2)} for future purchases
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {currentStep === 'review' && (

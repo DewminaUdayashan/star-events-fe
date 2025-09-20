@@ -11,6 +11,7 @@ interface PaymentWrapperProps {
   unitPrice: number;
   quantity: number;
   eventTitle: string;
+  totalAmount?: number; // Optional: override calculated total with custom amount
   onPaymentSuccess: (paymentIntentId: string) => void;
   onPaymentError: (error: string) => void;
 }
@@ -20,6 +21,7 @@ export function PaymentWrapper({
   unitPrice,
   quantity,
   eventTitle,
+  totalAmount,
   onPaymentSuccess,
   onPaymentError
 }: PaymentWrapperProps) {
@@ -47,28 +49,37 @@ export function PaymentWrapper({
           return;
         }
 
+        // Calculate the final amount to charge
+        const finalAmountToCharge = totalAmount || (unitPrice * quantity);
+        
         console.log("=== STRIPE CHECKOUT SESSION DEBUG ===");
         console.log("Ticket ID:", ticketId);
         console.log("Event Title:", eventTitle);
         console.log("Unit Price:", unitPrice, "LKR (type:", typeof unitPrice, ")");
-        console.log("Unit Amount (cents):", Math.round(Number(unitPrice) * 100), "cents");
         console.log("Quantity:", quantity, "(type:", typeof quantity, ")");
-        console.log("Expected Stripe Total:", unitPrice * quantity, "LKR");
-        console.log("✅  Stripe will calculate:", Math.round(Number(unitPrice) * 100), "cents ×", quantity, "=", Math.round(Number(unitPrice) * 100) * quantity, "cents");
+        console.log("Subtotal (Unit × Quantity):", unitPrice * quantity, "LKR");
+        console.log("Total Amount Override:", totalAmount, "LKR");
+        console.log("Final Amount to Charge:", finalAmountToCharge, "LKR");
+        console.log("Final Amount (cents):", Math.round(Number(finalAmountToCharge) * 100), "cents");
 
         // Validation checks
-        if (unitPrice <= 0) {
-          throw new Error(`Invalid unit price: ${unitPrice}`);
+        if (finalAmountToCharge <= 0) {
+          throw new Error(`Invalid final amount: ${finalAmountToCharge}`);
         }
         if (quantity <= 0) {
           throw new Error(`Invalid quantity: ${quantity}`);
         }
 
+        // For Stripe, we need to send the total amount as unit price with quantity 1
+        // when using a custom total amount (after discounts)
+        const stripeUnitPrice = totalAmount ? Math.round(Number(finalAmountToCharge) * 100) : Math.round(Number(unitPrice) * 100);
+        const stripeQuantity = totalAmount ? 1 : Number(quantity);
+
         const requestBody = {
           ticketId: ticketId,
           ticketType: eventTitle || "Event Ticket",
-          unitPrice: Math.round(Number(unitPrice) * 100), // Convert LKR to cents (smallest currency unit)
-          quantity: Number(quantity)
+          unitPrice: stripeUnitPrice, // Convert LKR to cents (smallest currency unit)
+          quantity: stripeQuantity
         };
 
         console.log("Request body being sent:", JSON.stringify(requestBody, null, 2));
