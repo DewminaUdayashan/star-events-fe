@@ -56,6 +56,7 @@
     "lucide-react": "^0.454.0",
     "next": "14.2.16",
     "next-themes": "latest",
+    "node-fetch": "^3.3.2",
     "qrcode": "^1.5.3",
     "react": "^18",
     "react-day-picker": "latest",
@@ -74,14 +75,15 @@
   },
   "devDependencies": {
     "@types/file-saver": "^2.0.7",
-    "@types/node": "^22",
+    "@types/node": "^24.5.2",
+    "@types/node-fetch": "^2.6.13",
     "@types/qrcode": "^1.5.5",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
     "eslint": "^8",
     "eslint-config-next": "14.2.16",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "typescript": "^5.9.2"
   }
 }

@@ -112,6 +112,12 @@ export class TicketsService {
   async validateTicket(ticketCode: string): Promise<{ valid: boolean; ticket?: Ticket }> {
     return apiClient.get(`/api/Tickets/validate/${ticketCode}`)
   }
+
+  // Get QR code for a specific ticket using the endpoint mentioned in requirements
+  async getTicketQRCode(ticketId: string): Promise<{ Success: boolean; QRCodePath?: string; TicketCode?: string }> {
+    const response = await apiClient.get<{ Success: boolean; QRCodePath?: string; TicketCode?: string }>(`/api/Tickets/${ticketId}/qrcode`)
+    return response
+  }
 }
 
 export const ticketsService = new TicketsService()

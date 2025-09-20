@@ -18,8 +18,6 @@ import {
   Tag,
   User,
   ArrowLeft,
-  Plus,
-  Minus,
   Loader2,
 } from "lucide-react";
 import { useEvent } from "@/lib/services";
@@ -31,11 +29,10 @@ export default function EventDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const eventId = params.id as string;
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
 
   const { data: event, isLoading: loading, error } = useEvent(eventId);
 
-  const [selectedTickets, setSelectedTickets] = useState<Record<string, number>>({});
   const [isLiked, setIsLiked] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
 
@@ -71,29 +68,6 @@ export default function EventDetailsPage() {
   }
 
   // Helper functions
-  const updateTicketQuantity = (priceId: string, change: number) => {
-    const price = event.prices?.find((p) => p.id === priceId);
-    if (!price) return;
-
-    const currentQuantity = selectedTickets[priceId] || 0;
-    const newQuantity = Math.max(0, Math.min(price.stock, currentQuantity + change));
-
-    setSelectedTickets((prev) => ({
-      ...prev,
-      [priceId]: newQuantity,
-    }));
-  };
-
-  const getTotalAmount = () => {
-    return Object.entries(selectedTickets).reduce((total, [priceId, quantity]) => {
-      const price = event.prices?.find((p) => p.id === priceId);
-      return total + (price ? price.price * quantity : 0);
-    }, 0);
-  };
-
-  const getTotalTickets = () => {
-    return Object.values(selectedTickets).reduce((total, quantity) => total + quantity, 0);
-  };
 
   const hasAvailableTickets = () => {
     return event.prices && Array.isArray(event.prices) && event.prices.some(price => price.stock > 0);
@@ -114,6 +88,42 @@ export default function EventDetailsPage() {
     } finally {
       setBookingLoading(false);
     }
+  };
+
+  const renderBookingButton = () => {
+    if (!hasAvailableTickets()) {
+      return (
+        <Button className="w-full bg-gray-600 cursor-not-allowed rounded-2xl" size="lg" disabled>
+          Sold Out
+        </Button>
+      );
+    }
+    
+    if (hasRole("Admin")) {
+      return (
+        <Button className="w-full bg-gray-600 cursor-not-allowed rounded-2xl" size="lg" disabled>
+          Admins Cannot Book
+        </Button>
+      );
+    }
+    
+    return (
+      <Button
+        className="w-full bg-purple-600 hover:bg-purple-700 rounded-2xl"
+        size="lg"
+        onClick={handleBookTickets}
+        disabled={bookingLoading}
+      >
+        {bookingLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Proceeding...
+          </>
+        ) : (
+          "Book Tickets"
+        )}
+      </Button>
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -302,35 +312,6 @@ export default function EventDetailsPage() {
                           </div>
                         </div>
 
-                        {/* Quantity Controls */}
-                        {/* <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8 border-gray-600 bg-transparent rounded-xl text-white hover:bg-gray-700"
-                              onClick={() => updateTicketQuantity(price.id, -1)}
-                              disabled={!selectedTickets[price.id] || selectedTickets[price.id] === 0}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="w-8 text-center text-white">
-                              {selectedTickets[price.id] || 0}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8 border-gray-600 bg-transparent rounded-xl text-white hover:bg-gray-700"
-                              onClick={() => updateTicketQuantity(price.id, 1)}
-                              disabled={
-                                price.stock === 0 ||
-                                (selectedTickets[price.id] || 0) >= price.stock
-                              }
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div> */}
                       </div>
                     ))
                 ) : (
@@ -341,46 +322,9 @@ export default function EventDetailsPage() {
 
                 <Separator className="bg-gray-700" />
 
-                {/* Total Summary */}
-                {getTotalTickets() > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-gray-300">
-                      <span>Total Tickets:</span>
-                      <span>{getTotalTickets()}</span>
-                    </div>
-                    <div className="flex justify-between text-white font-bold text-lg">
-                      <span>Total Amount:</span>
-                      <span>Rs. {getTotalAmount().toLocaleString()}</span>
-                    </div>
-                  </div>
-                )}
-
                 {/* Booking Button */}
-                {hasAvailableTickets() ? (
-                  <Button
-                    className="w-full bg-purple-600 hover:bg-purple-700 rounded-2xl"
-                    size="lg"
-                    onClick={handleBookTickets}
-                    disabled={bookingLoading}
-                  >
-                    {bookingLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Proceeding...
-                      </>
-                    ) : (
-                      "Book Tickets"
-                    )}
-                  </Button>
-                ) : (
-                  <Button
-                    className="w-full bg-gray-600 cursor-not-allowed rounded-2xl"
-                    size="lg"
-                    disabled
-                  >
-                    Sold Out
-                  </Button>
-                )}
+                {renderBookingButton()}
+
               </CardContent>
             </Card>
           </div>
