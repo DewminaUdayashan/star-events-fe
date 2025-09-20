@@ -4,7 +4,12 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { eventsService } from '@/lib/services/events.service'
 import { ticketsService } from '@/lib/services'
-import type { Event, Ticket } from '@/lib/types/api'
+import type { Event, Ticket as BaseTicket } from '@/lib/types/api'
+
+// Extended ticket type to handle both camelCase and PascalCase from API
+type Ticket = BaseTicket & {
+  IsPaid?: boolean; // Handle PascalCase from some API endpoints
+};
 import { BookingFlow } from '@/components/booking/BookingFlow'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -124,7 +129,7 @@ export default function BookingPage() {
       const ticket = await ticketsService.getTicketById(ticketId)
       
       // Verify payment status
-      if (ticket.isPaid) {
+      if (ticket.isPaid ?? ticket.IsPaid) {
         setTicketData(ticket)
         // Generate QR code
         const qrCodeData = generateQRCode(ticket)
@@ -294,7 +299,7 @@ export default function BookingPage() {
                         <div className="flex justify-between">
                           <span className="text-gray-400">Status:</span>
                           <Badge className="bg-green-600">
-                            {ticketData.isPaid ? 'Paid' : 'Pending'}
+                            {(ticketData.isPaid ?? ticketData.IsPaid) ? 'Paid' : 'Pending'}
                           </Badge>
                         </div>
                       </div>

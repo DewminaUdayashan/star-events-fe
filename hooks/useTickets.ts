@@ -169,7 +169,7 @@ export function useTicketQRCode() {
 
   // Poll payment status until ticket is paid, with fallback to mark as paid
   const pollPaymentStatus = useCallback(async (ticketId: string, maxAttempts = 15): Promise<boolean> => {
-    // for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const status = await ticketsService.getPaymentStatus(ticketId)
         setPaymentStatus(status.paymentStatus)
@@ -198,7 +198,7 @@ export function useTicketQRCode() {
         }
         await new Promise(resolve => setTimeout(resolve, 3000))
       }
-    // }
+    }
     
     // If polling failed, try to manually mark as paid as fallback
     try {
@@ -297,11 +297,32 @@ export function useTicketQRCode() {
     setTicketCode(null) // Clear ticketCode as well
   }, [qrCodeUrl])
 
-  // Direct QR download without payment polling (for manual download button)
+  // Direct QR download using the specific endpoint (for manual download button)
   const downloadQRCode = useCallback(async (ticketId: string) => {
     try {
       setLoading(true)
       setError(null)
+
+      // Try the specific endpoint first as mentioned in requirements
+      try {
+        console.log('Attempting to get QR code for ticket:', ticketId)
+        const qrResult = await ticketsService.getTicketQRCode(ticketId)
+        console.log('QR code result:', qrResult)
+        
+        if (qrResult.Success && qrResult.TicketCode) {
+          console.log('Getting QR image for ticket code:', qrResult.TicketCode)
+          const blob = await ticketsService.getQrImageByTicketCode(qrResult.TicketCode)
+          const url = URL.createObjectURL(blob)
+          setQrCodeUrl(url)
+          setTicketCode(qrResult.TicketCode)
+          console.log('QR code URL created successfully')
+          return url
+        } else {
+          console.warn('QR result missing Success or TicketCode:', qrResult)
+        }
+      } catch (specificError) {
+        console.error('Specific QR endpoint failed:', specificError)
+      }
 
       // First try to get ticket details
       const ticketDetails = await ticketsService.getTicket(ticketId);

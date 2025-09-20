@@ -30,7 +30,8 @@ import {
 import Link from 'next/link'
 import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { useTicketBooking, usePaymentProcessing } from '@/hooks'
+import { useTicketBooking } from '@/hooks/useTickets'
+import { usePaymentProcessing } from '@/hooks/usePayments'
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm'
 import type { CartItem } from '@/lib/types/api'
 
@@ -39,7 +40,7 @@ export default function CheckoutPage() {
   const searchParams = useSearchParams()
   const { items: cartItems, removeItem, updateQuantity, clearCart } = useCart()
   const { user } = useAuth()
-  const { bookTicket, applyPromotion, useLoyaltyPoints, loading: bookingLoading } = useTicketBooking()
+  const { bookTicket, applyPromotion, useLoyaltyPoints: applyLoyaltyPoints, loading: bookingLoading } = useTicketBooking()
   const { processPayment, loading: paymentLoading } = usePaymentProcessing()
 
   const [currentStep, setCurrentStep] = useState<'review' | 'payment' | 'confirmation'>('review')
