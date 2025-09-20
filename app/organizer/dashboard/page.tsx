@@ -65,12 +65,6 @@ export default function OrganizerDashboard() {
                 Welcome back, {user.fullName}! Here's your event overview.
               </p>
             </div>
-            <Link href="/organizer/events/create">
-              <Button className="bg-purple-600 hover:bg-purple-700">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Event
-              </Button>
-            </Link>
           </div>
 
           {/* Stats Cards */}
@@ -163,6 +157,99 @@ export default function OrganizerDashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Reports Section */}
+          <Card className="bg-gray-800 border-gray-700 mb-8">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center">
+                <BarChart3 className="h-5 w-5 mr-2" />
+                Reports & Analytics
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Link href="/organizer/reports/sales">
+                  <Card className="bg-gray-900 border-gray-600 hover:border-purple-500 transition-all cursor-pointer group">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center group-hover:bg-green-500 transition-colors">
+                          <DollarSign className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium text-sm">
+                            Sales Report
+                          </h4>
+                          <p className="text-gray-400 text-xs">
+                            Track revenue & bookings
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                <Link href="/organizer/reports/events">
+                  <Card className="bg-gray-900 border-gray-600 hover:border-purple-500 transition-all cursor-pointer group">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center group-hover:bg-blue-500 transition-colors">
+                          <Calendar className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium text-sm">
+                            Events Performance
+                          </h4>
+                          <p className="text-gray-400 text-xs">
+                            Analyze event metrics
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                <Link href="/organizer/reports/revenue">
+                  <Card className="bg-gray-900 border-gray-600 hover:border-purple-500 transition-all cursor-pointer group">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center group-hover:bg-purple-500 transition-colors">
+                          <TrendingUp className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium text-sm">
+                            Revenue Analysis
+                          </h4>
+                          <p className="text-gray-400 text-xs">
+                            Monthly trends
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                <Link href="/organizer/reports">
+                  <Card className="bg-gray-900 border-gray-600 hover:border-purple-500 transition-all cursor-pointer group">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center group-hover:bg-orange-500 transition-colors">
+                          <BarChart3 className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium text-sm">
+                            All Reports
+                          </h4>
+                          <p className="text-gray-400 text-xs">
+                            View all analytics
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Recent Events */}
           <Card className="bg-gray-800 border-gray-700">
