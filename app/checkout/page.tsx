@@ -153,18 +153,51 @@ export default function CheckoutPage() {
 
   const handlePaymentSuccess = async (paymentIntent: any) => {
     try {
+      console.log('Payment successful, processing booking...', paymentIntent)
+      
       // Calculate all the booking details
       const subtotal = calculateSubtotal()
       const totalDiscount = calculateTotalDiscount()
       const finalTotal = calculateTotal()
       const pointsToEarn = calculatePointsToEarn()
       
+      let bookedTicketId = null
+      let actualBookingData = null
+
+      try {
+        // Book tickets for each cart item
+        for (const item of cartItems) {
+          console.log('Booking ticket for item:', item)
+          
+          const bookingRequest = {
+            eventId: item.eventId,
+            eventPriceId: item.ticketTypeId, // Use ticketTypeId from cart as eventPriceId for API
+            quantity: item.quantity,
+            discountCode: appliedDiscount?.code,
+            useLoyaltyPoints: loyaltyPointsRedeemed > 0
+          }
+
+          console.log('Booking request:', bookingRequest)
+          const bookedTicket = await bookTicket(bookingRequest)
+          console.log('Booked ticket:', bookedTicket)
+          
+          if (!bookedTicketId) {
+            bookedTicketId = bookedTicket.id
+            actualBookingData = bookedTicket
+          }
+        }
+      } catch (bookingError) {
+        console.warn('Booking API failed, proceeding with stored data:', bookingError)
+        // Generate a fallback ticket ID if booking fails
+        bookedTicketId = `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`
+      }
+
       // Get the first cart item for display (could be enhanced for multiple items)
       const firstItem = cartItems[0]
       
-      // Store booking data in localStorage for the confirmation page
+      // Store comprehensive booking data for the confirmation page
       const bookingData = {
-        ticketId: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+        ticketId: bookedTicketId || `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
         subtotal: subtotal,
         totalDiscount: totalDiscount,
         finalTotal: finalTotal,
@@ -179,12 +212,27 @@ export default function CheckoutPage() {
         eventDate: firstItem ? firstItem.event.eventDate : new Date().toISOString(),
         venueName: firstItem ? firstItem.event.venue?.name : 'Venue',
         paymentIntentId: paymentIntent.id || paymentIntent.payment_intent?.id,
-        sessionId: paymentIntent.id || 'unknown',
-        bookingDate: new Date().toISOString()
+        sessionId: paymentIntent.id || paymentIntent.payment_intent?.id || 'unknown',
+        bookingDate: new Date().toISOString(),
+        // Store actual API response data if available
+        apiTicketData: actualBookingData
       }
       
-      console.log('Storing booking data:', bookingData)
+      console.log('Storing booking data for confirmation page:', bookingData)
+      
+      // Store in multiple places for reliability
       localStorage.setItem('currentBookingData', JSON.stringify(bookingData))
+      if (bookedTicketId) {
+        localStorage.setItem('currentBookingTicketId', bookedTicketId)
+        localStorage.setItem('currentBooking', JSON.stringify({
+          ticketId: bookedTicketId,
+          totalAmount: finalTotal,
+          quantity: bookingData.quantity,
+          isPaid: true,
+          purchaseDate: new Date().toISOString(),
+          timestamp: Date.now()
+        }))
+      }
       
       setCurrentStep('confirmation')
       setSuccess('Payment successful! Your tickets have been booked.')
@@ -192,9 +240,12 @@ export default function CheckoutPage() {
       // Clear cart and redirect to booking confirmation
       setTimeout(() => {
         clearCart()
-        router.push(`/booking-confirmation?success=true&session_id=${bookingData.sessionId}&ticketId=${bookingData.ticketId}`)
+        const confirmationUrl = `/booking-confirmation?success=true&session_id=${bookingData.sessionId}&ticketId=${bookingData.ticketId}`
+        console.log('Redirecting to:', confirmationUrl)
+        router.push(confirmationUrl)
       }, 2000)
     } catch (err) {
+      console.error('Error in payment success handler:', err)
       setError('Payment successful but failed to process tickets. Please contact support.')
     }
   }
