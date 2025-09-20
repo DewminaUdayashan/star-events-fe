@@ -229,7 +229,7 @@ export function Navigation({ className }: NavigationProps) {
             )}
 
             {/* Create Event Button (for organizers/admins) */}
-            {user && (hasRole("Organizer") || hasRole("Admin")) && (
+            {user && hasRole("Organizer") && (
               <Link href="/organizer/events/create">
                 <Button size="sm" className="bg-green-600 hover:bg-green-700">
                   <Plus className="h-4 w-4 mr-2" />
