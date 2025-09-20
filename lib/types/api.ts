@@ -137,8 +137,8 @@ export interface ApplyPromotionRequest {
 }
 
 export interface UseLoyaltyPointsRequest {
-  ticketId: string;
-  points: number;
+  TicketId: string;  // Match C# property name exactly
+  Points: number;    // Match C# property name exactly
 }
 
 // Filter and Search Types

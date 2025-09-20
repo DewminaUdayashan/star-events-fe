@@ -37,6 +37,27 @@ interface NavbarProps {
   cartItemCount?: number;
 }
 
+// Utility function to clear booking session data
+const clearBookingSessionData = () => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('currentBookingData');
+    localStorage.removeItem('currentBookingTicketId');
+    localStorage.removeItem('currentBooking');
+    console.log('Cleared booking session data');
+  }
+};
+
+interface NavbarProps {
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    role: "customer" | "organizer" | "admin";
+    avatar?: string;
+  };
+  cartItemCount?: number;
+}
+
 export default function Navbar({
   user: propUser,
   cartItemCount = 0,
@@ -101,7 +122,7 @@ export default function Navbar({
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
+          <Link href="/" className="flex items-center space-x-2" onClick={clearBookingSessionData}>
             <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-purple-600">
               <Star className="h-5 w-5 text-white" />
             </div>
@@ -114,6 +135,7 @@ export default function Navbar({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={item.href === "/" ? clearBookingSessionData : undefined}
                 className="text-gray-300 hover:text-white transition-colors duration-200"
               >
                 {item.label}
@@ -278,6 +300,7 @@ export default function Navbar({
                     <Link
                       key={item.href}
                       href={item.href}
+                      onClick={item.href === "/" ? clearBookingSessionData : undefined}
                       className="text-lg text-gray-300 hover:text-white transition-colors p-2 rounded-2xl hover:bg-gray-800"
                     >
                       {item.label}

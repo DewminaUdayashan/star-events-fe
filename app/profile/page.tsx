@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient, type ApiResponse } from "@/lib/api-client";
+import { LoyaltyPointsProfile } from "@/components/loyalty/LoyaltyPointsProfile";
 
 interface UserProfile {
   name: string;
@@ -62,7 +63,7 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [activeSection, setActiveSection] =
-    useState<"profile" | "password" | "privacy">("profile");
+    useState<"profile" | "password" | "privacy" | "loyalty">("profile");
 
   // Form states
   const [newUsername, setNewUsername] = useState("");
@@ -300,7 +301,7 @@ export default function ProfilePage() {
         <div className="flex space-x-1 bg-gray-800 p-1 rounded-2xl mb-8">
           <button
             onClick={() => setActiveSection("profile")}
-            className={`flex-1 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+            className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
               activeSection === "profile"
                 ? "bg-purple-600 text-white"
                 : "text-gray-400 hover:text-white"
@@ -310,26 +311,37 @@ export default function ProfilePage() {
             Edit Profile
           </button>
           <button
+            onClick={() => setActiveSection("loyalty")}
+            className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+              activeSection === "loyalty"
+                ? "bg-purple-600 text-white"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <Star className="h-4 w-4 mr-2 inline" />
+            Loyalty Points
+          </button>
+          <button
             onClick={() => setActiveSection("password")}
-            className={`flex-1 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+            className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
               activeSection === "password"
                 ? "bg-purple-600 text-white"
                 : "text-gray-400 hover:text-white"
             }`}
           >
             <Lock className="h-4 w-4 mr-2 inline" />
-            Change Password
+            Password
           </button>
           <button
             onClick={() => setActiveSection("privacy")}
-            className={`flex-1 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+            className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
               activeSection === "privacy"
                 ? "bg-purple-600 text-white"
                 : "text-gray-400 hover:text-white"
             }`}
           >
             <Shield className="h-4 w-4 mr-2 inline" />
-            Privacy Settings
+            Privacy
           </button>
         </div>
 
@@ -621,6 +633,10 @@ export default function ProfilePage() {
                   </form>
                 </CardContent>
               </Card>
+            )}
+
+            {activeSection === "loyalty" && (
+              <LoyaltyPointsProfile />
             )}
 
             {activeSection === "privacy" && (
