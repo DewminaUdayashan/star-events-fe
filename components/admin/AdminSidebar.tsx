@@ -23,11 +23,6 @@ const adminNavItems = [
     icon: BarChart3,
   },
   {
-    title: "Events",
-    href: "/admin/events",
-    icon: Calendar,
-  },
-  {
     title: "Organizers",
     href: "/admin/organizers",
     icon: Users,
